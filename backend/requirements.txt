@@ -9,8 +9,10 @@ yfinance
 slowapi
 pydantic
 pydantic-settings
+langchain-core
 hypothesis
 pytest
 pytest-asyncio
 httpx
 python-dotenv
+pyyaml
