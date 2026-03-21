@@ -84,6 +84,52 @@ What would push this further: agent-initiated refresh when news volume spikes, p
 
 ---
 
+## Tools and Technologies
+
+### AI Tools
+- **Kiro** — AI IDE used for the full development loop: spec writing, code generation, debugging, test generation, and git operations
+- **OpenRouter** — LLM gateway providing access to multiple free-tier models via a single API (`https://openrouter.ai/api/v1/chat/completions`)
+- **LLM models used** (fallback chain, in order):
+  - `mistralai/mistral-7b-instruct:free`
+  - `meta-llama/llama-3.1-8b-instruct:free`
+  - `google/gemma-3-4b-it:free`
+  - `qwen/qwen3-8b:free`
+  - `nvidia/nemotron-3-super-120b-a12b:free`
+  - `stepfun/step-3.5-flash:free`
+  - `microsoft/phi-4-reasoning-plus:free`
+  - `deepseek/deepseek-r1-0528-qwen3-8b:free`
+
+### Backend
+- **Python 3.11**
+- **FastAPI** — async REST API framework
+- **SQLAlchemy (asyncio) + asyncpg** — async ORM and PostgreSQL driver
+- **Alembic** — database migrations
+- **APScheduler** — background refresh scheduler
+- **httpx** — async HTTP client for OpenRouter calls
+- **civic-auth[fastapi]** — wallet-based JWT authentication via Civic
+- **SlowAPI** — rate limiting middleware
+- **pydantic-settings** — environment variable configuration
+- **yfinance** — earnings and market data adapter
+- **Finnhub** — news sentiment adapter
+- **SEC EDGAR** — regulatory filings adapter
+- **Hypothesis** — property-based testing framework
+- **pytest + pytest-asyncio** — test runner
+
+### Frontend
+- **React 18 + TypeScript**
+- **Vite** — build tool and dev server
+- **React Router v6** — client-side routing
+- **TanStack Query (React Query v5)** — server state management and data fetching
+- **Recharts** — charting library (performance chart)
+- **Native WebSocket API** — real-time score and analysis updates
+
+### Infrastructure
+- **PostgreSQL** — primary database
+- **Railway** — deployment platform (backend + database)
+- **Git / GitHub** — version control
+
+---
+
 ## Known Gaps
 
 - Free-tier LLM models are inconsistent — sanitizer catches most bad output but not all
