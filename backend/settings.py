@@ -1,9 +1,14 @@
 """Application settings loaded from environment variables via pydantic-settings."""
+from pathlib import Path
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Resolve .env from project root regardless of working directory
+_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=str(_ENV_FILE), extra="ignore")
 
     # Authentication
     civic_client_id: str = ""
@@ -18,14 +23,20 @@ class Settings(BaseSettings):
 
     # LLM / OpenRouter
     openrouter_api_key: str = ""
-    llm_model: str = "mistralai/mistral-7b-instruct"
+    llm_model: str = "mistralai/mistral-7b-instruct:free"
     llm_concurrency: int = 1
-    llm_max_iterations: int = 6
     llm_temperature: float = 0.2
-    llm_react_prompt_file: str = ""
     llm_delta_threshold: float = 5.0
     llm_max_tickers_per_cycle: int = 50
-    llm_max_context_chars: int = 2000
+    # Agent loop settings
+    llm_reflection_delta: float = 3.0
+    llm_max_reflection_rounds: int = 2
+    llm_max_tool_calls: int = 5
+
+    @field_validator("llm_max_reflection_rounds")
+    @classmethod
+    def cap_reflection_rounds(cls, v: int) -> int:
+        return min(v, 3)
 
     # Data fetching
     fetch_concurrency: int = 20

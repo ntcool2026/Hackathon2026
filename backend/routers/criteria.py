@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,6 +14,8 @@ from backend.models import CustomCriterionCreate
 from backend.models_orm import CustomCriterion as CustomCriterionORM
 
 router = APIRouter(prefix="/api/criteria", dependencies=[Depends(require_auth)])
+
+logger = logging.getLogger(__name__)
 
 _MAX_CRITERIA = 20
 
@@ -57,7 +60,10 @@ async def create_criterion(
     await db.commit()
     await db.refresh(criterion)
 
-    asyncio.create_task(_trigger_rescore(user_id))
+    task = asyncio.create_task(_trigger_rescore(user_id))
+    task.add_done_callback(
+        lambda t: logger.error("_trigger_rescore failed: %s", t.exception()) if t.exception() else None
+    )
     return _format(criterion)
 
 
@@ -80,7 +86,10 @@ async def update_criterion(
     await db.commit()
     await db.refresh(criterion)
 
-    asyncio.create_task(_trigger_rescore(user_id))
+    task = asyncio.create_task(_trigger_rescore(user_id))
+    task.add_done_callback(
+        lambda t: logger.error("_trigger_rescore failed: %s", t.exception()) if t.exception() else None
+    )
     return _format(criterion)
 
 
@@ -95,7 +104,10 @@ async def delete_criterion(
     await db.delete(criterion)
     await db.commit()
 
-    asyncio.create_task(_trigger_rescore(user_id))
+    task = asyncio.create_task(_trigger_rescore(user_id))
+    task.add_done_callback(
+        lambda t: logger.error("_trigger_rescore failed: %s", t.exception()) if t.exception() else None
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -135,9 +147,10 @@ async def _trigger_rescore(user_id: str) -> None:
     """Re-run scoring for all user tickers after criteria change."""
     from backend.db import AsyncSessionLocal
     from backend.agent import _get_criteria, _get_preferences, _get_user_tickers, _upsert_stock_score
-    from backend.models import StockData
+    from backend.models import StockData, WSEvent
     from backend.models_orm import StockData as StockDataORM
     from backend.scoring import compute_recommendation, compute_risk_score
+    from backend.ws_manager import ws_manager
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as db:
@@ -155,8 +168,9 @@ async def _trigger_rescore(user_id: str) -> None:
             stock_data = StockData(
                 ticker=row.ticker,
                 price=float(row.price) if row.price else None,
+                price_change_pct=float(row.price_change_pct) if row.price_change_pct else None,
                 volume=int(row.volume) if row.volume else None,
-                volatility=float(row.volatility) if row.volatility else None,
+                peg_ratio=float(row.peg_ratio) if row.peg_ratio else None,
                 beta=float(row.beta) if row.beta else None,
                 pe_ratio=float(row.pe_ratio) if row.pe_ratio else None,
                 debt_to_equity=float(row.debt_to_equity) if row.debt_to_equity else None,
@@ -168,5 +182,17 @@ async def _trigger_rescore(user_id: str) -> None:
             breakdown = compute_risk_score(stock_data, prefs, criteria)
             recommendation = compute_recommendation(breakdown.final_score)
             await _upsert_stock_score(db, user_id, ticker, breakdown, recommendation)
+            await ws_manager.broadcast_to_user(
+                user_id,
+                WSEvent(
+                    event="score_update",
+                    payload={
+                        "ticker": ticker,
+                        "risk_score": breakdown.final_score,
+                        "recommendation": recommendation.value,
+                        "breakdown": breakdown.model_dump(),
+                    },
+                ),
+            )
 
         await db.commit()

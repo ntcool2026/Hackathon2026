@@ -1,0 +1,4 @@
+# file: /Users/mama/Hackathon2026/backend/adapters/news_adapter.py
+# hypothesis_version: 6.151.9
+
+[0.0, 500, ' | ', 'apiKey', 'article_count', 'articles', 'fetch_news_sentiment', 'fetched_at', 'from', 'headline', 'headline_summary', 'pageSize', 'publishedAt', 'q', 'score', 'sentiment', 'sortBy', 'symbol', 'title', 'to', 'token']

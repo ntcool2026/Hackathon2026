@@ -1,10 +1,7 @@
 """Abstract base class for all data source adapters."""
 from __future__ import annotations
 
-import json
 from abc import ABC, abstractmethod
-
-from backend.settings import settings
 
 
 class BaseAdapter(ABC):
@@ -31,13 +28,14 @@ class BaseAdapter(ABC):
         ...
 
     def validate_output(self, data: dict) -> dict:
-        """Validate required keys and enforce LLM_MAX_CONTEXT_CHARS size cap.
+        """Validate required keys and enforce size cap.
 
         Subclasses override this to check adapter-specific required keys,
         then call super().validate_output(data) for the size cap.
         """
+        import json
         serialized = json.dumps(data)
-        max_chars: int = settings.llm_max_context_chars
+        max_chars: int = 8000  # safe default for LLM context
         if len(serialized) > max_chars:
             truncated = serialized[:max_chars] + " [truncated]"
             return {"_truncated_output": truncated}

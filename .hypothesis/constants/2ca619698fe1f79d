@@ -1,0 +1,4 @@
+# file: /Users/mama/Hackathon2026/backend/models_orm.py
+# hypothesis_version: 6.151.9
+
+['5', 'CASCADE', 'CustomCriterion', 'Portfolio', 'PortfolioStock', 'StockScore', 'StockScoreHistory', 'User', 'UserPreferences', 'UserThreshold', 'all, delete-orphan', 'balanced', 'custom_criteria', 'false', 'medium', 'portfolio', 'portfolio_stocks', 'portfolios', 'portfolios.id', 'preferences', 'refresh_logs', 'score_history', 'stock_data', 'stock_score_history', 'stock_scores', 'stocks', 'user', 'user_preferences', 'user_thresholds', 'users', 'users.id']

@@ -44,9 +44,9 @@ SECTOR_RISK_WEIGHTS: dict[str, float] = {
 # ---------------------------------------------------------------------------
 
 
-def normalize_volatility(v: float) -> float:
-    """Annualized volatility as decimal (e.g. 0.25 = 25%) → 0–100."""
-    return min(max(v * 100.0, 0.0), 100.0)
+def normalize_peg(peg: float) -> float:
+    """PEG ratio → 0–100 (0 → 0, ≥3.0 → 100). Higher PEG = more risk."""
+    return min(max((peg / 3.0) * 100.0, 0.0), 100.0)
 
 
 def normalize_beta(b: float) -> float:
@@ -54,9 +54,9 @@ def normalize_beta(b: float) -> float:
     return min(max((b / 3.0) * 100.0, 0.0), 100.0)
 
 
-def normalize_dte(d: float) -> float:
-    """Debt-to-equity ratio → 0–100 (0 → 0, ≥3.0 → 100)."""
-    return min(max((d / 3.0) * 100.0, 0.0), 100.0)
+def normalize_pe(pe: float) -> float:
+    """P/E ratio → 0–100 (0 → 0, ≥50 → 100). Higher P/E = more risk."""
+    return min(max((pe / 50.0) * 100.0, 0.0), 100.0)
 
 
 # ---------------------------------------------------------------------------
@@ -100,24 +100,24 @@ def compute_risk_score(
     """Compute a full ScoreBreakdown for a stock given user preferences and criteria."""
 
     # --- Component scores ---
-    vol_score = normalize_volatility(stock_data.volatility or 0.0)
+    peg_score = normalize_peg(stock_data.peg_ratio or 0.0)
     beta_score = normalize_beta(stock_data.beta or 0.0) if stock_data.beta is not None else None
-    dte_score = normalize_dte(float(stock_data.debt_to_equity)) if stock_data.debt_to_equity is not None else None
+    pe_score = normalize_pe(float(stock_data.pe_ratio)) if stock_data.pe_ratio is not None else None
     sector_key = stock_data.sector or "Unknown"
     sector_score = float(SECTOR_RISK_WEIGHTS.get(sector_key, SECTOR_RISK_WEIGHTS["Unknown"]))
 
     # --- Weight renormalization for missing inputs ---
     base_weights: dict[str, float] = {
-        "volatility": 0.30,
+        "peg": 0.30,
         "beta": 0.25,
-        "dte": 0.25,
+        "pe": 0.25,
         "sector": 0.20,
     }
-    active: dict[str, float] = {"volatility": vol_score, "sector": sector_score}
+    active: dict[str, float] = {"peg": peg_score, "sector": sector_score}
     if beta_score is not None:
         active["beta"] = beta_score
-    if dte_score is not None:
-        active["dte"] = dte_score
+    if pe_score is not None:
+        active["pe"] = pe_score
 
     raw_weight_sum = sum(base_weights[k] for k in active)
     weights_used: dict[str, float] = {
@@ -149,9 +149,9 @@ def compute_risk_score(
     recommendation = compute_recommendation(final_score)
 
     return ScoreBreakdown(
-        volatility_score=vol_score,
+        peg_score=peg_score,
         beta_score=beta_score if beta_score is not None else 0.0,
-        dte_score=dte_score if dte_score is not None else 0.0,
+        pe_score=pe_score if pe_score is not None else 0.0,
         sector_score=sector_score,
         weights=weights_used,
         base_score=base_score,

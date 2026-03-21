@@ -39,11 +39,12 @@ class GrowthVsValue(str, Enum):
 class StockData(BaseModel):
     ticker: str
     price: Optional[float] = None
+    price_change_pct: Optional[float] = None
     volume: Optional[int] = None
-    volatility: Optional[float] = None
+    peg_ratio: Optional[float] = None
     beta: Optional[float] = None
     pe_ratio: Optional[float] = None
-    debt_to_equity: Optional[float] = None
+    debt_to_equity: Optional[float] = None  # kept for custom criteria
     market_cap: Optional[int] = None
     sector: Optional[str] = None
     fetched_at: datetime
@@ -57,9 +58,9 @@ class StockData(BaseModel):
 class ScoreBreakdown(BaseModel):
     """Normalized component scores (0–100 each), weights, and final outputs."""
     # Component scores
-    volatility_score: float = Field(..., ge=0, le=100)
+    peg_score: float = Field(..., ge=0, le=100)
     beta_score: float = Field(0.0, ge=0, le=100)
-    dte_score: float = Field(0.0, ge=0, le=100)
+    pe_score: float = Field(0.0, ge=0, le=100)
     sector_score: float = Field(..., ge=0, le=100)
     # Effective weights after renormalization
     weights: dict[str, float]
@@ -196,3 +197,29 @@ class UserThresholdCreate(BaseModel):
 class WSEvent(BaseModel):
     event: str  # "score_update" | "rationale_update" | "threshold_alert" | "data_stale"
     payload: dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# Chat
+# ---------------------------------------------------------------------------
+
+class ChatMessage(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1)
+
+
+class ChatResponse(BaseModel):
+    answer: str
+
+
+# ---------------------------------------------------------------------------
+# Portfolio analysis
+# ---------------------------------------------------------------------------
+
+class PortfolioAnalysisResult(BaseModel):
+    summary: str = Field(..., max_length=500)
+    concentration_flags: list[str] = Field(default_factory=list)

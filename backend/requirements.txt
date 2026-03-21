@@ -5,8 +5,6 @@ sqlalchemy[asyncio]
 asyncpg
 alembic
 apscheduler
-langchain
-langchain-openai
 yfinance
 slowapi
 pydantic

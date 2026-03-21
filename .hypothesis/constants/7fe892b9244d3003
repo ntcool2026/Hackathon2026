@@ -1,0 +1,4 @@
+# file: /Users/mama/Hackathon2026/backend/adapters/__init__.py
+# hypothesis_version: 6.151.9
+
+['ADAPTER_REGISTRY', 'FinnhubAdapter', 'NewsAPIAdapter', 'SECEdgarAdapter', 'YFinanceAdapter', 'finnhub', 'newsapi', 'sec_edgar', 'yfinance']

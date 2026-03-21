@@ -1,0 +1,4 @@
+# file: /Users/mama/Hackathon2026/backend/llm_agent.py
+# hypothesis_version: 6.151.9
+
+[-999.0, 0.0, 0.4, 100.0, 300, 429, 500, 600, 4000, 16000, '(?<=[.!?])\\s+', ', rationale_at = :t', 'AI_RISK_SCORE', 'Authorization', 'BUY', 'Content-Type', 'HOLD', 'N/A', 'No models available', 'SELL', 'Stock ticker symbol', 'Unknown', 'ai', 'ai_recommendation', 'ai_risk_score', 'airec', 'application/json', 'assistant', 'auto', 'choices', 'concentration_flags', 'content', 'description', 'function', 'id', 'max_tokens', 'message', 'messages', 'model', 'name', 'object', 'parameters', 'portfolio_analysis', 'properties', 'r', 'rationale', 'rationale_at', 'rationale_update', 'reasoning', 'required', 'role', 'sector', 'string', 'summary', 'system', 't', 'temperature', 'ticker', 'tool', 'tool_call_id', 'tool_calls', 'tool_choice', 'tools', 'type', 'uid', 'user', '…']

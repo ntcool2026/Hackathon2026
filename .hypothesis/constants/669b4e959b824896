@@ -1,0 +1,4 @@
+# file: /Users/mama/Hackathon2026/backend/models.py
+# hypothesis_version: 6.151.9
+
+[-1.0, 0.0, 1.0, 100, 'BUY', 'HOLD', 'Recommendation', 'SELL', 'balanced', 'eq', 'growth', 'gt', 'gte', 'long', 'lt', 'lte', 'medium', 'operator', 'short', 'value']

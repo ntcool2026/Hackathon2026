@@ -1,0 +1,4 @@
+# file: /Users/mama/Hackathon2026/backend/tool_registry.py
+# hypothesis_version: 6.151.9
+
+['ToolRegistry', 'adapter', 'config', 'enabled', 'name', 'tools']

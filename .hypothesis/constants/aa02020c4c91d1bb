@@ -1,0 +1,4 @@
+# file: /Users/mama/Hackathon2026/backend/adapters/sec_edgar_adapter.py
+# hypothesis_version: 6.151.9
+
+[1000, '10-K', '10-Q', '8-K', 'User-Agent', 'cik_str', 'description', 'fetch_sec_filings', 'fetched_at', 'filed_at', 'filingDate', 'filings', 'form', 'form_type', 'primaryDocument', 'recent', 'ticker']

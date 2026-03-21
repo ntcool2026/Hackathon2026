@@ -1,0 +1,4 @@
+# file: /Users/mama/Hackathon2026/backend/scoring.py
+# hypothesis_version: 6.151.9
+
+[0.0, 0.05, 0.2, 0.25, 0.3, 0.9, 0.95, 1.0, 1.05, 1.1, 3.0, 50.0, 100.0, '35', '65', 'Consumer Staples', 'Energy', 'Financials', 'Healthcare', 'Industrials', 'Materials', 'Real Estate', 'SCORE_BUY_THRESHOLD', 'SCORE_SELL_THRESHOLD', 'Unknown', 'Utilities', 'balanced', 'beta', 'eq', 'growth', 'gt', 'gte', 'long', 'lt', 'lte', 'medium', 'pe', 'peg', 'sector', 'short', 'value']

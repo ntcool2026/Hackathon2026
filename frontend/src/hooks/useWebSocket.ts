@@ -4,17 +4,28 @@ import { useQueryClient } from '@tanstack/react-query'
 const WS_BASE = import.meta.env.VITE_WS_URL ?? `ws://${window.location.host}`
 const MAX_BACKOFF_MS = 30_000
 
-export function useWebSocket(userId: string | null, token: string | null) {
+export interface PortfolioAnalysis {
+  summary: string
+  concentration_flags: string[]
+}
+
+export function useWebSocket(
+  userId: string | null,
+  _token: string | null,
+  onPortfolioAnalysis?: (data: PortfolioAnalysis) => void,
+) {
   const queryClient = useQueryClient()
   const wsRef = useRef<WebSocket | null>(null)
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const backoffRef = useRef(1_000)
+  const onPortfolioAnalysisRef = useRef(onPortfolioAnalysis)
+  onPortfolioAnalysisRef.current = onPortfolioAnalysis
 
   useEffect(() => {
-    if (!userId || !token) return
+    if (!userId) return
 
     function connect() {
-      const url = `${WS_BASE}/ws/${userId}?token=${encodeURIComponent(token!)}`
+      const url = `${WS_BASE}/ws/${userId}`
       const ws = new WebSocket(url)
       wsRef.current = ws
 
@@ -46,14 +57,17 @@ export function useWebSocket(userId: string | null, token: string | null) {
       switch (event) {
         case 'score_update':
           if (ticker) {
+            // Invalidate portfolio stock lists (where scores are embedded) and standalone score queries
+            queryClient.invalidateQueries({ queryKey: ['stocks'] })
             queryClient.invalidateQueries({ queryKey: ['scores', ticker] })
             queryClient.invalidateQueries({ queryKey: ['scores'] })
           }
           break
         case 'rationale_update':
           if (ticker) {
+            // Invalidate all portfolio stock queries so AI data refreshes immediately
+            queryClient.invalidateQueries({ queryKey: ['stocks'] })
             queryClient.invalidateQueries({ queryKey: ['rationale', ticker] })
-            queryClient.invalidateQueries({ queryKey: ['scores', ticker] })
           }
           break
         case 'threshold_alert':
@@ -74,6 +88,14 @@ export function useWebSocket(userId: string | null, token: string | null) {
             queryClient.invalidateQueries({ queryKey: ['scores', ticker] })
           }
           break
+        case 'portfolio_analysis':
+          if (onPortfolioAnalysisRef.current) {
+            onPortfolioAnalysisRef.current({
+              summary: payload.summary as string,
+              concentration_flags: (payload.concentration_flags as string[]) ?? [],
+            })
+          }
+          break
       }
     }
 
@@ -89,5 +111,5 @@ export function useWebSocket(userId: string | null, token: string | null) {
       if (retryRef.current) clearTimeout(retryRef.current)
       wsRef.current?.close()
     }
-  }, [userId, token, queryClient])
+  }, [userId, queryClient])
 }

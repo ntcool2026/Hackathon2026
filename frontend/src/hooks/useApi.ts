@@ -9,8 +9,7 @@ export async function apiFetch(input: RequestInfo, init?: RequestInit): Promise<
   const res = await fetch(input, { credentials: 'include', ...init })
 
   if (res.status === 401) {
-    sessionStorage.removeItem('token')
-    sessionStorage.removeItem('userId')
+    // Clear any stale session state and bounce to login
     window.location.href = '/login'
     throw new Error('Unauthorized')
   }

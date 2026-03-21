@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
@@ -11,7 +12,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from backend.agent import _get_criteria, _get_user_tickers, _upsert_stock_score
 from backend.auth import get_current_user, get_or_create_user, require_auth
 from backend.db import AsyncSession, get_db
-from backend.main import limiter
+from backend.limiter import limiter
 from backend.models import UserPreferences, UserPreferencesUpdate
 from backend.models_orm import (
     StockData as StockDataORM,
@@ -20,6 +21,8 @@ from backend.models_orm import (
 from backend.scoring import compute_recommendation, compute_risk_score
 
 router = APIRouter(prefix="/api/preferences", dependencies=[Depends(require_auth)])
+
+logger = logging.getLogger(__name__)
 
 
 @router.get("")
@@ -77,8 +80,11 @@ async def update_preferences(
     await db.execute(stmt)
     await db.commit()
 
-    # Trigger rescore asynchronously (fire-and-forget, within 5s)
-    asyncio.create_task(_rescore_user(user_id, body))
+    # Trigger rescore asynchronously (fire-and-forget)
+    task = asyncio.create_task(_rescore_user(user_id, body))
+    task.add_done_callback(
+        lambda t: logger.error("_rescore_user failed: %s", t.exception()) if t.exception() else None
+    )
 
     return {"status": "updated"}
 
@@ -119,8 +125,9 @@ async def preview_preferences(
         stock_data = StockData(
             ticker=row.ticker,
             price=float(row.price) if row.price else None,
+            price_change_pct=float(row.price_change_pct) if row.price_change_pct else None,
             volume=int(row.volume) if row.volume else None,
-            volatility=float(row.volatility) if row.volatility else None,
+            peg_ratio=float(row.peg_ratio) if row.peg_ratio else None,
             beta=float(row.beta) if row.beta else None,
             pe_ratio=float(row.pe_ratio) if row.pe_ratio else None,
             debt_to_equity=float(row.debt_to_equity) if row.debt_to_equity else None,
@@ -149,7 +156,8 @@ async def preview_preferences(
 async def _rescore_user(user_id: str, prefs: UserPreferences) -> None:
     """Rescore all tickers for a user after preference update (fire-and-forget)."""
     from backend.db import AsyncSessionLocal
-    from backend.models import StockData
+    from backend.models import StockData, WSEvent
+    from backend.ws_manager import ws_manager
 
     async with AsyncSessionLocal() as db:
         criteria = await _get_criteria(db, user_id)
@@ -165,8 +173,9 @@ async def _rescore_user(user_id: str, prefs: UserPreferences) -> None:
             stock_data = StockData(
                 ticker=row.ticker,
                 price=float(row.price) if row.price else None,
+                price_change_pct=float(row.price_change_pct) if row.price_change_pct else None,
                 volume=int(row.volume) if row.volume else None,
-                volatility=float(row.volatility) if row.volatility else None,
+                peg_ratio=float(row.peg_ratio) if row.peg_ratio else None,
                 beta=float(row.beta) if row.beta else None,
                 pe_ratio=float(row.pe_ratio) if row.pe_ratio else None,
                 debt_to_equity=float(row.debt_to_equity) if row.debt_to_equity else None,
@@ -178,5 +187,17 @@ async def _rescore_user(user_id: str, prefs: UserPreferences) -> None:
             breakdown = compute_risk_score(stock_data, prefs, criteria)
             recommendation = compute_recommendation(breakdown.final_score)
             await _upsert_stock_score(db, user_id, ticker, breakdown, recommendation)
+            await ws_manager.broadcast_to_user(
+                user_id,
+                WSEvent(
+                    event="score_update",
+                    payload={
+                        "ticker": ticker,
+                        "risk_score": breakdown.final_score,
+                        "recommendation": recommendation.value,
+                        "breakdown": breakdown.model_dump(),
+                    },
+                ),
+            )
 
         await db.commit()

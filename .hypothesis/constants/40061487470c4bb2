@@ -1,0 +1,4 @@
+# file: /Users/mama/Hackathon2026/backend/adapters/yfinance_adapter.py
+# hypothesis_version: 6.151.9
+
+[100.0, '1d', '1w', '1wk', '1y', '2y', '7d', 'Close', 'beta', 'close', 'currentPrice', 'date', 'debtToEquity', 'epsCurrentYear', 'epsForward', 'fetch_earnings', 'fetched_at', 'forwardPE', 'json', 'marketCap', 'pegRatio', 'regularMarketPrice', 'regularMarketVolume', 'sector', 'ticker', 'trailingEps', 'trailingPE', 'trailingPegRatio', 'volume']

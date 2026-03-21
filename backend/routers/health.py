@@ -22,3 +22,12 @@ async def health() -> JSONResponse:
             {"status": "degraded", "detail": str(exc)},
             status_code=503,
         )
+
+
+@router.post("/admin/refresh")
+async def trigger_refresh() -> JSONResponse:
+    """Manually trigger a full data + LLM refresh cycle."""
+    from backend.main import run_refresh_cycle
+    import asyncio
+    asyncio.create_task(run_refresh_cycle())
+    return JSONResponse({"status": "refresh started"})

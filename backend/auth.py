@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 import logging
+import os
 
-from civic_auth.integrations.fastapi import create_auth_dependencies, create_auth_router
+from civic_auth.integrations.fastapi import create_auth_dependencies, create_auth_router, FastAPICookieStorage, CivicAuth
+from civic_auth.types import AuthConfig
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,12 +15,40 @@ from backend.settings import settings
 
 logger = logging.getLogger(__name__)
 
+_FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+
 # ---------------------------------------------------------------------------
 # Civic Auth router and FastAPI dependencies
 # ---------------------------------------------------------------------------
 
-auth_router = create_auth_router(client_id=settings.civic_client_id)
-get_current_user, require_auth = create_auth_dependencies()
+_config: AuthConfig = {
+    "client_id": settings.civic_client_id,
+    "redirect_url": os.getenv("AUTH_REDIRECT_URL", "http://localhost:8000/auth/callback"),
+}
+
+# Use the civic router but override the callback to redirect to frontend
+_civic_router = create_auth_router(_config)
+civic_auth_dep, get_current_user, require_auth = create_auth_dependencies(_config)
+
+# Build our own router that includes all civic routes except callback
+auth_router = APIRouter()
+
+# Re-register all civic routes except /auth/callback
+for route in _civic_router.routes:
+    if route.path != "/auth/callback":  # type: ignore[attr-defined]
+        auth_router.routes.append(route)
+
+# Custom callback that redirects to frontend after auth
+@auth_router.get("/auth/callback")
+async def auth_callback(code: str, state: str, request: Request):
+    redirect_response = RedirectResponse(url=f"{_FRONTEND_ORIGIN}/dashboard", status_code=302)
+    storage = FastAPICookieStorage(request, redirect_response)
+    civic = CivicAuth(storage, _config)
+    try:
+        await civic.resolve_oauth_access_code(code, state)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return redirect_response
 
 
 # ---------------------------------------------------------------------------
@@ -39,19 +71,3 @@ async def get_or_create_user(user: dict, db: AsyncSession) -> str:
     await db.commit()
     return user_id
 
-
-# ---------------------------------------------------------------------------
-# WebSocket token verification
-# ---------------------------------------------------------------------------
-
-
-async def verify_civic_token(token: str) -> dict:
-    """Validate a Civic token passed as a WebSocket query parameter.
-
-    Returns the user dict on success; raises an exception on failure.
-    The civic-auth SDK exposes a verify helper — we call it here so the
-    WebSocket endpoint can close with code 4001 on any exception.
-    """
-    from civic_auth import verify_token  # type: ignore[import]
-
-    return await verify_token(token, client_id=settings.civic_client_id)

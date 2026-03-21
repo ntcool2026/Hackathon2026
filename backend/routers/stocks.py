@@ -13,7 +13,7 @@ from backend.adapters.yfinance_adapter import YFinanceAdapter
 from backend.agent import _get_criteria, _get_preferences, _upsert_stock_data, _upsert_stock_score
 from backend.auth import get_current_user, get_or_create_user, require_auth
 from backend.db import AsyncSession, get_db
-from backend.main import limiter
+from backend.limiter import limiter
 from backend.models_orm import Portfolio, PortfolioStock, StockScore as StockScoreORM
 from backend.scoring import compute_recommendation, compute_risk_score
 
@@ -52,10 +52,25 @@ async def list_stocks(
     )
     score_map = {s.ticker: s for s in scores_result.scalars().all()}
 
+    # Attach latest prices from stock_data
+    from backend.models_orm import StockData as StockDataORM
+    prices_result = await db.execute(
+        select(StockDataORM.ticker, StockDataORM.price, StockDataORM.price_change_pct).where(StockDataORM.ticker.in_(tickers))
+    )
+    price_map = {
+        row[0]: {
+            "price": float(row[1]) if row[1] is not None else None,
+            "price_change_pct": float(row[2]) if row[2] is not None else None,
+        }
+        for row in prices_result.all()
+    }
+
     return [
         {
             "ticker": s.ticker,
             "added_at": s.added_at,
+            "price": price_map.get(s.ticker, {}).get("price"),
+            "price_change_pct": price_map.get(s.ticker, {}).get("price_change_pct"),
             "score": _format_score(score_map.get(s.ticker)),
         }
         for s in stocks
@@ -191,5 +206,7 @@ def _format_score(score: StockScoreORM | None) -> dict | None:
         "breakdown": score.breakdown,
         "rationale": score.rationale,
         "rationale_at": score.rationale_at,
+        "ai_risk_score": float(score.ai_risk_score) if score.ai_risk_score is not None else None,
+        "ai_recommendation": score.ai_recommendation,
         "computed_at": score.computed_at,
     }

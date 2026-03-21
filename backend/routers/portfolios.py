@@ -28,10 +28,48 @@ async def list_portfolios(
         select(Portfolio).where(Portfolio.user_id == user_id)
     )
     portfolios = result.scalars().all()
-    return [
-        {"id": str(p.id), "name": p.name, "created_at": p.created_at}
-        for p in portfolios
-    ]
+
+    from backend.models_orm import StockScore as StockScoreORM
+
+    out = []
+    for p in portfolios:
+        # Stock count
+        count_res = await db.execute(
+            select(func.count()).where(PortfolioStock.portfolio_id == p.id)
+        )
+        stock_count = count_res.scalar_one() or 0
+
+        # Tickers in this portfolio
+        tickers_res = await db.execute(
+            select(PortfolioStock.ticker).where(PortfolioStock.portfolio_id == p.id)
+        )
+        tickers = [r[0] for r in tickers_res.all()]
+
+        # Avg risk score + recommendation breakdown from stock_scores
+        avg_risk = None
+        rec_counts: dict[str, int] = {}
+        if tickers:
+            scores_res = await db.execute(
+                select(StockScoreORM.risk_score, StockScoreORM.recommendation).where(
+                    StockScoreORM.user_id == user_id,
+                    StockScoreORM.ticker.in_(tickers),
+                )
+            )
+            rows = scores_res.all()
+            if rows:
+                avg_risk = round(sum(float(r[0]) for r in rows) / len(rows), 1)
+                for r in rows:
+                    rec_counts[r[1]] = rec_counts.get(r[1], 0) + 1
+
+        out.append({
+            "id": str(p.id),
+            "name": p.name,
+            "created_at": p.created_at,
+            "stock_count": stock_count,
+            "avg_risk_score": avg_risk,
+            "rec_counts": rec_counts,
+        })
+    return out
 
 
 @router.post("", status_code=201)

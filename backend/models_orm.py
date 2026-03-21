@@ -118,8 +118,9 @@ class StockData(Base):
 
     ticker: Mapped[str] = mapped_column(Text, primary_key=True)
     price: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
+    price_change_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
     volume: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
-    volatility: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
+    peg_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
     beta: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
     pe_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
     debt_to_equity: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
@@ -142,6 +143,8 @@ class StockScore(Base):
     breakdown: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     rationale: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     rationale_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    ai_risk_score: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
+    ai_recommendation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     computed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
 
     user: Mapped[User] = relationship("User", back_populates="stock_scores")

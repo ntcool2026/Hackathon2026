@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from backend.models import WSEvent
 
@@ -61,13 +61,13 @@ ws_manager = WebSocketManager()
 async def websocket_endpoint(
     websocket: WebSocket,
     user_id: str,
-    token: str = Query(...),
 ) -> None:
-    """Accept a WebSocket connection after validating the Civic token."""
-    from backend.auth import verify_civic_token  # avoid circular import at module level
+    """Accept a WebSocket connection. Auth is cookie-based (Civic Auth)."""
+    from backend.auth import civic_auth_dep  # avoid circular import at module level
 
+    # Verify the user via cookie using the Civic dependency
     try:
-        user = await verify_civic_token(token)
+        user = await civic_auth_dep(websocket)
         if user.get("id") != user_id:
             await websocket.close(code=4001)
             return
@@ -78,7 +78,6 @@ async def websocket_endpoint(
     await ws_manager.connect(user_id, websocket)
     try:
         while True:
-            # Keep connection alive; clients send no messages in this design
             await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(user_id, websocket)

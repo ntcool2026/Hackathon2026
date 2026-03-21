@@ -1,50 +1,49 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
+
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 interface AuthState {
-  token: string | null
-  userId: string | null
-}
-
-type AuthAction =
-  | { type: 'LOGIN'; token: string; userId: string }
-  | { type: 'LOGOUT' }
-
-const initialState: AuthState = {
-  token: sessionStorage.getItem('token'),
-  userId: sessionStorage.getItem('userId'),
-}
-
-function authReducer(state: AuthState, action: AuthAction): AuthState {
-  switch (action.type) {
-    case 'LOGIN':
-      sessionStorage.setItem('token', action.token)
-      sessionStorage.setItem('userId', action.userId)
-      return { token: action.token, userId: action.userId }
-    case 'LOGOUT':
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('userId')
-      return { token: null, userId: null }
-    default:
-      return state
-  }
+  user: Record<string, unknown> | null
+  loading: boolean
 }
 
 interface AuthContextValue extends AuthState {
-  login: (token: string, userId: string) => void
-  logout: () => void
+  logout: () => Promise<void>
+  refresh: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(authReducer, initialState)
+  const [user, setUser] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const login = (token: string, userId: string) =>
-    dispatch({ type: 'LOGIN', token, userId })
-  const logout = () => dispatch({ type: 'LOGOUT' })
+  const refresh = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/user`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setUser(data)
+      } else {
+        setUser(null)
+      }
+    } catch {
+      setUser(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const logout = async () => {
+    await fetch(`${API_BASE}/auth/logout`, { credentials: 'include' })
+    setUser(null)
+    window.location.href = '/login'
+  }
+
+  useEffect(() => { refresh() }, [])
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   )

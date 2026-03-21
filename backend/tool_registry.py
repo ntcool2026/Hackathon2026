@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 
 import yaml
-from langchain.tools import StructuredTool
+from langchain_core.tools import StructuredTool
 
 from backend.base_adapter import BaseAdapter
 from backend.settings import settings
@@ -54,13 +54,19 @@ class ToolRegistry:
     @classmethod
     def from_config(cls, path: str | None = None) -> "ToolRegistry":
         """Load config from a YAML file path (or TOOLS_CONFIG_PATH env var)."""
+        from pathlib import Path
         resolved_path = path or settings.tools_config_path
+        # If the path is relative, resolve it against the repo root (two levels up from this file)
+        p = Path(resolved_path)
+        if not p.is_absolute() and not p.exists():
+            repo_root = Path(__file__).resolve().parents[1]
+            p = repo_root / resolved_path
         try:
-            with open(resolved_path) as f:
+            with open(p) as f:
                 config = yaml.safe_load(f)
         except FileNotFoundError:
             raise FileNotFoundError(
-                f"tools_config.yaml not found at '{resolved_path}'. "
+                f"tools_config.yaml not found at '{p}'. "
                 "Set TOOLS_CONFIG_PATH to the correct path."
             )
         if config is None:

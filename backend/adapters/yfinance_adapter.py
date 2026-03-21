@@ -39,8 +39,9 @@ class YFinanceAdapter(BaseAdapter):
         return StockData(
             ticker=ticker.upper(),
             price=_safe_float(info.get("currentPrice") or info.get("regularMarketPrice")),
+            price_change_pct=_safe_float(info.get("regularMarketChangePercent")),
             volume=_safe_int(info.get("volume") or info.get("regularMarketVolume")),
-            volatility=_safe_float(info.get("beta52WeekLow")),  # approximation
+            peg_ratio=_safe_float(info.get("trailingPegRatio") or info.get("pegRatio")),
             beta=_safe_float(info.get("beta")),
             pe_ratio=_safe_float(info.get("trailingPE") or info.get("forwardPE")),
             debt_to_equity=_safe_float(info.get("debtToEquity")),
@@ -49,6 +50,14 @@ class YFinanceAdapter(BaseAdapter):
             fetched_at=datetime.now(tz=timezone.utc),
             is_stale=False,
         )
+
+    async def fetch_price_history(self, ticker: str, period: str) -> list[dict]:
+        """Return OHLC price history for the given period (1w, 1y, 2y)."""
+        period_map = {"1w": ("7d", "1d"), "1y": ("1y", "1wk"), "2y": ("2y", "1wk")}
+        yf_period, interval = period_map.get(period, ("1y", "1wk"))
+        loop = asyncio.get_event_loop()
+        df = await loop.run_in_executor(None, self._get_history, ticker, yf_period, interval)
+        return df
 
     async def fetch_earnings(self, ticker: str) -> EarningsData:
         """Return EarningsData for the given ticker."""
@@ -78,6 +87,20 @@ class YFinanceAdapter(BaseAdapter):
     # ------------------------------------------------------------------
     # Sync helper (runs in executor)
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_history(ticker: str, period: str, interval: str) -> list[dict]:
+        try:
+            df = yf.Ticker(ticker).history(period=period, interval=interval)
+            if df.empty:
+                return []
+            return [
+                {"date": str(idx.date()), "close": round(float(row["Close"]), 2)}
+                for idx, row in df.iterrows()
+            ]
+        except Exception as exc:
+            logger.warning("yfinance history failed for %s: %s", ticker, exc)
+            return []
 
     @staticmethod
     def _get_info(ticker: str) -> dict:

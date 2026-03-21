@@ -99,15 +99,38 @@ async def run_data_pipeline() -> None:
                     breakdown = compute_risk_score(stock_data, prefs, criteria)
                     recommendation = compute_recommendation(breakdown.final_score)
 
+                    # Read prev score BEFORE upsert so threshold crossing detection works
+                    threshold_val = thresholds.get(ticker)
+                    prev_score: float | None = None
+                    if threshold_val is not None:
+                        prev_row = await db.execute(
+                            select(StockScoreORM.risk_score).where(
+                                StockScoreORM.user_id == user_id,
+                                StockScoreORM.ticker == ticker,
+                            )
+                        )
+                        prev_val = prev_row.scalar_one_or_none()
+                        prev_score = float(prev_val) if prev_val is not None else None
+
                     await _upsert_stock_score(db, user_id, ticker, breakdown, recommendation)
                     await _append_score_history(db, user_id, ticker, breakdown, recommendation)
 
-                    # Threshold alert check
-                    threshold_val = thresholds.get(ticker)
+                    # Threshold alert check (uses prev_score captured before upsert)
                     if threshold_val is not None:
-                        await _check_threshold_alert(
-                            user_id, ticker, breakdown.final_score, threshold_val, db
-                        )
+                        crossed = prev_score is not None and prev_score < threshold_val <= breakdown.final_score
+                        if crossed:
+                            from backend.ws_manager import ws_manager as _ws
+                            await _ws.broadcast_to_user(
+                                user_id,
+                                WSEvent(
+                                    event="threshold_alert",
+                                    payload={
+                                        "ticker": ticker,
+                                        "risk_score": breakdown.final_score,
+                                        "threshold": threshold_val,
+                                    },
+                                ),
+                            )
 
                     # Broadcast score_update
                     from backend.ws_manager import ws_manager
@@ -137,43 +160,6 @@ async def run_data_pipeline() -> None:
             await _log_cycle_end(db, log_id, stocks_updated, {"_pipeline": str(exc)})
 
 
-# ---------------------------------------------------------------------------
-# Threshold alert
-# ---------------------------------------------------------------------------
-
-
-async def _check_threshold_alert(
-    user_id: str,
-    ticker: str,
-    new_score: float,
-    threshold: float,
-    db: AsyncSession,
-) -> None:
-    """Emit a threshold_alert WebSocket event if the score crosses the threshold."""
-    # Fetch previous score to detect crossing direction
-    row = await db.execute(
-        select(StockScoreORM.risk_score).where(
-            StockScoreORM.user_id == user_id,
-            StockScoreORM.ticker == ticker,
-        )
-    )
-    prev_row = row.scalar_one_or_none()
-    prev_score = float(prev_row) if prev_row is not None else None
-
-    crossed = prev_score is not None and prev_score < threshold <= new_score
-    if crossed:
-        from backend.ws_manager import ws_manager
-        await ws_manager.broadcast_to_user(
-            user_id,
-            WSEvent(
-                event="threshold_alert",
-                payload={
-                    "ticker": ticker,
-                    "risk_score": new_score,
-                    "threshold": threshold,
-                },
-            ),
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -271,8 +257,9 @@ async def _upsert_stock_data(db: AsyncSession, stock_data: StockData) -> None:
     stmt = pg_insert(StockDataORM).values(
         ticker=stock_data.ticker,
         price=stock_data.price,
+        price_change_pct=stock_data.price_change_pct,
         volume=stock_data.volume,
-        volatility=stock_data.volatility,
+        peg_ratio=stock_data.peg_ratio,
         beta=stock_data.beta,
         pe_ratio=stock_data.pe_ratio,
         debt_to_equity=stock_data.debt_to_equity,
@@ -284,8 +271,9 @@ async def _upsert_stock_data(db: AsyncSession, stock_data: StockData) -> None:
         index_elements=["ticker"],
         set_={
             "price": stock_data.price,
+            "price_change_pct": stock_data.price_change_pct,
             "volume": stock_data.volume,
-            "volatility": stock_data.volatility,
+            "peg_ratio": stock_data.peg_ratio,
             "beta": stock_data.beta,
             "pe_ratio": stock_data.pe_ratio,
             "debt_to_equity": stock_data.debt_to_equity,

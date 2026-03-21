@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { apiFetch } from '../hooks/useApi'
 
 const API = import.meta.env.VITE_API_URL ?? ''
 
@@ -19,15 +20,14 @@ interface PreviewScore {
 }
 
 async function fetchPrefs(): Promise<Prefs> {
-  const res = await fetch(`${API}/api/preferences`, { credentials: 'include' })
+  const res = await apiFetch(`${API}/api/preferences`)
   if (!res.ok) throw new Error('Failed to fetch preferences')
   return res.json()
 }
 
 async function savePrefs(prefs: Prefs): Promise<void> {
-  const res = await fetch(`${API}/api/preferences`, {
+  const res = await apiFetch(`${API}/api/preferences`, {
     method: 'PUT',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(prefs),
   })
@@ -42,7 +42,7 @@ async function fetchPreview(prefs: Prefs): Promise<PreviewScore[]> {
     dividend_preference: String(prefs.dividend_preference),
     growth_vs_value: prefs.growth_vs_value,
   })
-  const res = await fetch(`${API}/api/preferences/preview?${params}`, { credentials: 'include' })
+  const res = await apiFetch(`${API}/api/preferences/preview?${params}`)
   if (!res.ok) throw new Error('Failed to fetch preview')
   const data = await res.json()
   return data.previews ?? []
@@ -90,7 +90,7 @@ export default function PreferencesForm() {
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: 24 }}>
-      <Link to="/dashboard" style={{ color: '#6366f1', fontSize: 14 }}>← Back</Link>
+      <Link to="/dashboard" style={{ color: 'var(--color-primary)', fontSize: 14 }}>← Back</Link>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginTop: 12, marginBottom: 20 }}>Preferences</h1>
 
       <label style={labelStyle}>
@@ -132,7 +132,7 @@ export default function PreferencesForm() {
       <button
         onClick={() => saveMutation.mutate(prefs)}
         disabled={saveMutation.isPending}
-        style={{ marginTop: 20, background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 24px', cursor: 'pointer', fontWeight: 600 }}
+        style={{ marginTop: 20, background: 'var(--color-primary)', color: '#0a1118', border: 'none', borderRadius: 6, padding: '10px 24px', cursor: 'pointer', fontWeight: 600 }}
       >
         {saveMutation.isPending ? 'Saving…' : 'Save Preferences'}
       </button>
@@ -147,7 +147,7 @@ export default function PreferencesForm() {
             <div key={s.ticker} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6', fontSize: 14 }}>
               <span style={{ fontWeight: 600 }}>{s.ticker}</span>
               <span>{s.risk_score.toFixed(1)}</span>
-              <span style={{ color: s.recommendation === 'BUY' ? '#22c55e' : s.recommendation === 'SELL' ? '#ef4444' : '#eab308', fontWeight: 700 }}>
+              <span style={{ color: s.recommendation === 'BUY' ? 'var(--color-buy)' : s.recommendation === 'SELL' ? 'var(--color-sell)' : 'var(--color-hold)', fontWeight: 700 }}>
                 {s.recommendation}
               </span>
             </div>
@@ -164,13 +164,15 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 16,
   fontSize: 14,
   fontWeight: 500,
-  color: '#374151',
+  color: 'var(--color-text)',
 }
 
 const selectStyle: React.CSSProperties = {
   marginTop: 4,
   padding: '6px 10px',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--color-border)',
   borderRadius: 6,
   fontSize: 14,
+  background: 'var(--color-surface)',
+  color: 'var(--color-text)',
 }

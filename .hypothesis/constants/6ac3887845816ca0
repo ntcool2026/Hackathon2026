@@ -1,0 +1,4 @@
+# file: /Users/mama/Hackathon2026/backend/llm_agent.py
+# hypothesis_version: 6.151.9
+
+[-999.0, 0.0, 100.0, 200, 429, 600, '#', '(?<=[.!?])\\s+', ', rationale_at = :t', '; ', 'AI_RISK_SCORE', 'Authorization', 'BUY', 'Content-Type', 'EPS data unavailable', 'HOLD', 'N/A', 'No models available', 'SELL', '\\bBUY\\b', '\\bHOLD\\b', '\\bSELL\\b', 'ai', 'ai_recommendation', 'ai_risk_score', 'airec', 'application/json', 'choices', 'content', 'earnings', 'eps_actual', 'eps_estimate', 'filings', 'headline_summary', 'json', 'max_tokens', 'message', 'messages', 'model', 'model_dump', 'news', 'r', 'rationale', 'rationale_at', 'rationale_update', 'reasoning', 'role', 'sec', 'sentiment', 'surprise_pct', 'system', 't', 'temperature', 'ticker', 'uid', 'user', '…']
