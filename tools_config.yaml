@@ -1,0 +1,15 @@
+tools:
+  - name: fetch_news_sentiment
+    enabled: true
+    adapter: finnhub
+    config:
+      max_articles: 5
+  - name: fetch_sec_filings
+    enabled: true
+    adapter: sec_edgar
+  - name: fetch_earnings
+    enabled: true
+    adapter: yfinance
+  - name: fetch_analyst_ratings
+    enabled: false
+    adapter: finnhub
