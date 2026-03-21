@@ -214,3 +214,280 @@ The following areas from the original design's testing strategy were not impleme
 - `POST /api/chat` endpoint integration tests (auth, rate limit, empty portfolio)
 
 These are all unit-testable without a live DB or LLM — they test pure functions and in-memory state. Adding them would bring the agent loop to the same coverage level as the scoring engine.
+
+---
+
+## Sequence Diagrams
+
+### `_generate_rationale` — per-ticker agent loop
+
+```mermaid
+sequenceDiagram
+    participant S as Scheduler
+    participant A as llm_agent.py
+    participant DB as stock_scores (DB)
+    participant ADP as Adapters (yfinance/news/SEC)
+    participant OR as OpenRouter
+
+    S->>A: _process_ticker_for_users(ticker, ...)
+    A->>DB: _load_memory(user_id, ticker)
+    DB-->>A: {ai_risk_score, ai_recommendation, rationale} or None
+
+    A->>ADP: _prefetch_tool_data() — asyncio.gather all adapters
+    ADP-->>A: {tool_name: validated_result, ...}
+
+    A->>A: _build_system_prompt(ticker, memory)
+    A->>A: _build_analysis_user_message(ticker, score, tool_data)
+
+    A->>OR: _call_openrouter_with_tools(messages) — initial analysis
+    OR-->>A: {choices[0].message.content}
+
+    A->>A: _extract_structured_block(raw)
+    A->>A: _parse_structured_output(raw) → (score, rec, rationale)
+    A->>A: _sanitize_rationale(rationale, ...) — first pass
+
+    loop Reflection (up to LLM_MAX_REFLECTION_ROUNDS)
+        A->>OR: _call_openrouter_with_tools(messages + critique)
+        OR-->>A: revised score/rec/rationale
+        A->>A: check delta < LLM_REFLECTION_DELTA → break early
+    end
+
+    A->>A: _sanitize_rationale(rationale, ...) — second pass
+    A->>DB: _persist_rationale(user_id, ticker, ...)
+    A->>WS: broadcast rationale_update event
+```
+
+### `POST /api/chat` — conversational flow
+
+```mermaid
+sequenceDiagram
+    participant U as User (browser)
+    participant C as chat.py router
+    participant DB as stock_scores (DB)
+    participant OR as OpenRouter
+
+    U->>C: POST /api/chat {message: "..."}
+    C->>C: get_or_create_user(user, db) → user_id
+    C->>DB: SELECT stock_scores WHERE user_id = ?
+    DB-->>C: [{ticker, ai_risk_score, ai_recommendation, rationale}, ...]
+
+    alt portfolio is empty
+        C-->>U: {"answer": "You have no holdings yet..."}
+    else portfolio has holdings
+        C->>C: _build_chat_system_prompt(portfolio)
+        C->>C: load _chat_sessions[user_id] history
+        C->>OR: _call_openrouter_with_tools(system + history + user_msg)
+        OR-->>C: {choices[0].message.content}
+        C->>C: append turn, _trim_history (cap at 5 turns)
+        C-->>U: {"answer": "..."}
+    end
+```
+
+### Full refresh cycle — data flow
+
+```mermaid
+sequenceDiagram
+    participant APSched as APScheduler
+    participant DP as run_data_pipeline
+    participant LLC as run_llm_agent_cycle
+    participant DB as PostgreSQL
+    participant ADP as Adapters
+    participant OR as OpenRouter
+    participant WS as WebSocket clients
+
+    APSched->>DP: trigger (every 30 min)
+    DP->>ADP: fetch market data for all tickers
+    ADP-->>DP: StockData
+    DP->>DB: upsert stock_data, compute & upsert stock_scores
+
+    DP->>LLC: run_llm_agent_cycle()
+    LLC->>DB: _get_candidates() — scores with delta >= threshold
+    DB-->>LLC: [(user_id, ticker, score, prev_score), ...]
+
+    loop per unique ticker (semaphore: LLM_CONCURRENCY)
+        LLC->>DB: _load_memory()
+        LLC->>ADP: _prefetch_tool_data() concurrently
+        LLC->>OR: initial analysis + reflection
+        LLC->>DB: _persist_rationale()
+        LLC->>WS: broadcast rationale_update
+        LLC->>LLC: asyncio.sleep(12s) — rate limit guard
+    end
+
+    loop per user with >= 2 tickers
+        LLC->>DB: load sector data
+        LLC->>OR: portfolio summary (1 LLM call)
+        LLC->>WS: broadcast portfolio_analysis
+    end
+```
+
+---
+
+## Prompt Templates
+
+### System prompt (no memory)
+
+```
+You are a financial risk scoring API. Respond with ONLY the three lines below —
+no preamble, no explanation, no chain-of-thought, no tool commentary.
+Any text outside these three lines will be discarded.
+
+AI_RISK_SCORE: <integer 0-100>
+AI_RECOMMENDATION: <BUY or HOLD or SELL>
+RATIONALE: <one factual sentence about the stock's primary risk driver>
+```
+
+### System prompt (with memory from previous cycle)
+
+```
+You are a financial risk scoring API. Respond with ONLY the three lines below —
+no preamble, no explanation, no chain-of-thought, no tool commentary.
+Any text outside these three lines will be discarded.
+
+AI_RISK_SCORE: <integer 0-100>
+AI_RECOMMENDATION: <BUY or HOLD or SELL>
+RATIONALE: <one factual sentence about the stock's primary risk driver>
+
+Previous cycle for {ticker}: score={prev_score}, rec={prev_rec}, rationale={prev_rationale[:300]}
+```
+
+Combined system + user message is capped at 16 000 characters.
+
+### User message (no tool data)
+
+```
+{ticker} quant_risk_score={risk_score:.1f}/100.
+AI_RISK_SCORE:
+AI_RECOMMENDATION:
+RATIONALE:
+```
+
+### User message (with pre-fetched tool data)
+
+```
+{ticker} quant_risk_score={risk_score:.1f}/100.
+
+Market data:
+[fetch_earnings] {"ticker": "AAPL", "price": 189.3, ...}  ← capped at 800 chars
+[fetch_news_sentiment] {"sentiment": 0.4, "article_count": 3, ...}
+[fetch_sec_filings] {"filings": [...]}
+
+AI_RISK_SCORE:
+AI_RECOMMENDATION:
+RATIONALE:
+```
+
+### Reflection / critique prompt
+
+```
+Previous: score={score:.1f}, rec={rec}, rationale={rationale}
+Revise if needed. Output only:
+AI_RISK_SCORE:
+AI_RECOMMENDATION:
+RATIONALE:
+```
+
+### Guardrail — leaked-prompt patterns detected by `_sanitize_rationale`
+
+If the rationale matches any of these patterns it is replaced with a score-derived fallback:
+
+```
+[one sentence]
+<one sentence
+<2-3 sentences
+[0-100]
+[BUY|HOLD|SELL]
+<integer
+output (only|exactly) (these|three)
+from the previous analysis.*it says
+in the output format
+should be one sentence
+quant_score=
+quant risk score is \d
+```
+
+---
+
+## Failure Mode Decision Tree
+
+```
+_generate_rationale(ticker, ...)
+│
+├─ _prefetch_tool_data fails for one adapter
+│   └─ Log WARNING, exclude that tool from tool_data, continue with remaining data
+│
+├─ _prefetch_tool_data fails for ALL adapters
+│   └─ tool_data = {}, proceed with quant-score-only prompt
+│
+├─ _call_openrouter_with_tools returns 429
+│   └─ Sleep 1s → try next model → ... → if all 8 exhausted: raise last_error
+│       └─ Caught by _generate_rationale try/except → return fallback rationale
+│
+├─ _parse_structured_output finds no AI_RISK_SCORE
+│   └─ initial_score = risk_score (quant fallback), rec = "HOLD", rationale = ""
+│
+├─ _sanitize_rationale detects leaked prompt
+│   └─ Replace with: "{ticker} carries moderate risk (score X/100); ..."
+│
+├─ _run_reflection_loop — parse fails on a round
+│   └─ Log WARNING, retain previous round's values, stop reflection
+│
+├─ _run_reflection_loop — delta < LLM_REFLECTION_DELTA
+│   └─ Stop early, return current values
+│
+└─ Any unhandled exception in _generate_rationale
+    └─ Log WARNING with ticker, return static fallback:
+       "Automated analysis for {ticker} is temporarily unavailable."
+
+run_portfolio_analysis(user_id, ...)
+│
+├─ len(ticker_data) < 2
+│   └─ Return immediately, no LLM call
+│
+├─ LLM call fails
+│   └─ summary = "Portfolio contains N holdings across M sectors." (no LLM)
+│
+└─ asyncio.wait_for timeout (60s)
+    └─ Log WARNING with user_id, skip broadcast for this user
+```
+
+---
+
+## Configuration Reference
+
+| Environment variable | Default | Valid range | Controls |
+|---|---|---|---|
+| `LLM_MODEL` | `mistralai/mistral-7b-instruct:free` | Any OpenRouter model ID | Primary model; fallback chain starts here |
+| `LLM_TEMPERATURE` | `0.2` | `0.0 – 1.0` | Sampling temperature for all LLM calls |
+| `LLM_REFLECTION_DELTA` | `3.0` | `0.0 – 100.0` | Minimum score change to continue reflection |
+| `LLM_MAX_REFLECTION_ROUNDS` | `2` | `1 – 3` (hard cap 3) | Max critique rounds per ticker |
+| `LLM_MAX_TOOL_CALLS` | `5` | `1 – 20` | Retained for `_run_tool_call_phase`; unused by main loop |
+| `LLM_CONCURRENCY` | `1` | `1 – 10` | Max tickers processed in parallel |
+| `LLM_DELTA_THRESHOLD` | `5.0` | `0.0 – 100.0` | Min score change vs previous cycle to trigger LLM re-analysis |
+| `LLM_MAX_TICKERS_PER_CYCLE` | `50` | `1 – 500` | Cap on tickers processed per refresh cycle |
+| `REFRESH_INTERVAL_MINUTES` | `30` | `5 – 1440` | How often the full data + LLM pipeline runs |
+| `REFRESH_CYCLE_TIMEOUT_MINUTES` | `25` | `1 – 60` | Hard timeout for a single refresh cycle |
+| `OPENROUTER_API_KEY` | _(required)_ | — | API key for OpenRouter |
+
+---
+
+## Deliberate Trade-offs and Out-of-Scope Decisions
+
+These are gaps that were consciously left out, not oversights.
+
+**Persistent chat history**
+Chat sessions are stored in a module-level dict and lost on server restart. Persisting to DB would require a new table, migration, and session expiry logic. For a hackathon the in-memory approach is sufficient; the 5-turn cap limits the blast radius of a restart.
+
+**Agent-initiated refresh**
+The agent runs on a fixed 30-minute scheduler, not in response to market events. Triggering a refresh when news volume spikes or a price moves significantly would require a separate event-detection layer (e.g. polling a news feed, watching price WebSocket). This was out of scope.
+
+**Sector-aware tool selection**
+All enabled adapters are pre-fetched for every ticker regardless of sector. A more sophisticated approach would skip SEC filings for ETFs, skip earnings data for REITs with no EPS, etc. This would require sector metadata at fetch time and adds complexity for marginal token savings.
+
+**Function calling (OpenRouter)**
+The original design used OpenRouter's `tools` API so the LLM could decide which adapters to call. This was replaced with pre-fetching because free-tier models have inconsistent function-calling support — some return plain text, some hallucinate tool names, and the fallback logic to detect this added more complexity than the feature was worth at this stage. The `_run_tool_call_phase` function is retained for future use.
+
+**Per-user rationale**
+Rationale is computed once per ticker using the average score across all users holding that ticker, then broadcast to all of them. A per-user rationale would account for each user's risk tolerance and preferences but would multiply LLM calls by the number of users per ticker.
+
+**Frontend test coverage**
+No frontend unit or integration tests were written. The React components were iterated on directly against the running backend. Adding Vitest + React Testing Library tests for the ChatPanel, PortfolioSummary, and WebSocket hook would be the highest-value frontend testing investment.
