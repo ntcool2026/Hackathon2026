@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Portfolio Advisor — Hackathon Presentation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  .deck { width: 100vw; height: 100vh; position: relative; }
+
+  .slide {
+    display: none;
+    width: 100%;
+    height: 100%;
+    padding: 60px 80px;
+    flex-direction: column;
+    justify-content: center;
+    position: absolute;
+    top: 0; left: 0;
+  }
+  .slide.active { display: flex; }
+
+  /* Accent colours */
+  .accent  { color: #6ee7b7; }
+  .accent2 { color: #93c5fd; }
+  .accent3 { color: #fbbf24; }
+  .muted   { color: #94a3b8; }
+
+  /* Typography */
+  h1 { font-size: 3.2rem; font-weight: 700; line-height: 1.15; margin-bottom: 16px; }
+  h2 { font-size: 2.2rem; font-weight: 700; margin-bottom: 28px; }
+  h3 { font-size: 1.3rem; font-weight: 600; margin-bottom: 10px; color: #6ee7b7; }
+  p  { font-size: 1.15rem; line-height: 1.7; color: #cbd5e1; }
+  .subtitle { font-size: 1.4rem; color: #94a3b8; margin-bottom: 8px; }
+  .eyebrow  { font-size: 0.85rem; letter-spacing: 0.12em; text-transform: uppercase;
+              color: #6ee7b7; margin-bottom: 16px; font-weight: 600; }
+
+  /* Layout helpers */
+  .cols { display: grid; gap: 40px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* Cards */
+  .card {
+    background: #1e2433;
+    border: 1px solid #2d3748;
+    border-radius: 12px;
+    padding: 28px 32px;
+  }
+  .card-sm { padding: 20px 24px; }
+
+  /* Pill badges */
+  .pill {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 8px;
+    margin-bottom: 6px;
+  }
+  .pill-green  { background: #064e3b; color: #6ee7b7; }
+  .pill-blue   { background: #1e3a5f; color: #93c5fd; }
+  .pill-yellow { background: #451a03; color: #fbbf24; }
+  .pill-purple { background: #2e1065; color: #c4b5fd; }
+
+  /* Step list */
+  .steps { list-style: none; }
+  .steps li {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+    font-size: 1.1rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+  }
+  .step-num {
+    min-width: 32px; height: 32px;
+    background: #6ee7b7;
+    color: #0f1117;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* Code-style block */
+  .code-block {
+    background: #0d1117;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.9rem;
+    color: #6ee7b7;
+    line-height: 1.8;
+  }
+
+  /* Stat callout */
+  .stat { text-align: center; }
+  .stat-num { font-size: 3rem; font-weight: 800; color: #6ee7b7; line-height: 1; }
+  .stat-label { font-size: 0.95rem; color: #94a3b8; margin-top: 6px; }
+
+  /* Rating row */
+  .rating-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    font-size: 1.05rem;
+  }
+  .rating-label { width: 160px; color: #94a3b8; }
+  .rating-bar-bg { flex: 1; height: 8px; background: #2d3748; border-radius: 4px; }
+  .rating-bar { height: 8px; border-radius: 4px; background: #6ee7b7; }
+  .rating-text { width: 80px; font-weight: 600; color: #e2e8f0; }
+
+  /* Navigation */
+  .nav {
+    position: fixed;
+    bottom: 28px;
+    right: 40px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+  }
+  .nav button {
+    background: #1e2433;
+    border: 1px solid #2d3748;
+    color: #e2e8f0;
+    padding: 10px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background 0.15s;
+  }
+  .nav button:hover { background: #2d3748; }
+  .slide-counter {
+    font-size: 0.85rem;
+    color: #64748b;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  /* Progress bar */
+  .progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: #6ee7b7;
+    transition: width 0.3s ease;
+    z-index: 100;
+  }
+
+  /* Divider */
+  .divider { width: 60px; height: 4px; background: #6ee7b7; border-radius: 2px; margin-bottom: 28px; }
+
+  /* Slide-specific backgrounds */
+  .slide-title { background: radial-gradient(ellipse at 70% 50%, #0d2a1f 0%, #0f1117 60%); }
+  .slide-problem { background: radial-gradient(ellipse at 30% 60%, #1a1a2e 0%, #0f1117 60%); }
+  .slide-solution { background: radial-gradient(ellipse at 60% 40%, #0d1f2d 0%, #0f1117 60%); }
+  .slide-agent { background: radial-gradient(ellipse at 50% 50%, #0d2a1f 0%, #0f1117 60%); }
+  .slide-vibe { background: radial-gradient(ellipse at 40% 60%, #1a0d2e 0%, #0f1117 60%); }
+  .slide-demo { background: radial-gradient(ellipse at 60% 40%, #1a1a0d 0%, #0f1117 60%); }
+  .slide-eval { background: radial-gradient(ellipse at 50% 50%, #0d1f2d 0%, #0f1117 60%); }
+  .slide-close { background: radial-gradient(ellipse at 50% 50%, #0d2a1f 0%, #0f1117 60%); }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<div class="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide slide-title active" id="slide-1">
+    <div class="eyebrow">Hackathon 2026</div>
+    <h1>Stock Portfolio<br><span class="accent">Advisor</span></h1>
+    <p class="subtitle">An agentic AI that thinks about your portfolio<br>so you don't have to</p>
+    <div style="margin-top: 40px; display: flex; gap: 10px; flex-wrap: wrap;">
+      <span class="pill pill-green">FastAPI</span>
+      <span class="pill pill-blue">React + TypeScript</span>
+      <span class="pill pill-yellow">OpenRouter LLM</span>
+      <span class="pill pill-purple">Civic Auth</span>
+      <span class="pill pill-green">Railway</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: The Problem -->
+  <div class="slide slide-problem" id="slide-2">
+    <div class="eyebrow">The Problem</div>
+    <h2>Retail investors are flying blind</h2>
+    <div class="divider"></div>
+    <div class="cols cols-3" style="margin-top: 8px;">
+      <div class="card">
+        <h3>Data dashboards</h3>
+        <p>Show you numbers. Don't explain what they mean or what to do about them.</p>
+      </div>
+      <div class="card">
+        <h3>Robo-advisors</h3>
+        <p>Give you a recommendation. Never show their reasoning. Black box.</p>
+      </div>
+      <div class="card">
+        <h3>Financial advisors</h3>
+        <p>Expensive. Slow. Not available at 11pm when you're checking your portfolio.</p>
+      </div>
+    </div>
+    <p style="margin-top: 32px; font-size: 1.2rem;">
+      Nobody shows you the <span class="accent">score</span> <em>and</em> the <span class="accent">reasoning</span> <em>and</em> lets you <span class="accent">ask follow-up questions</span>.
+    </p>
+  </div>
+
+  <!-- SLIDE 3: The Solution -->
+  <div class="slide slide-solution" id="slide-3">
+    <div class="eyebrow">The Solution</div>
+    <h2>Quant scoring + AI reasoning + conversation</h2>
+    <div class="divider"></div>
+    <div class="cols cols-2">
+      <div>
+        <ul class="steps">
+          <li>
+            <div class="step-num">1</div>
+            <div><strong>Quant engine</strong> scores each stock — beta, P/E, PEG ratio, momentum, user criteria</div>
+          </li>
+          <li>
+            <div class="step-num">2</div>
+            <div><strong>LLM agent</strong> fetches live market data, reasons about it, critiques its own output</div>
+          </li>
+          <li>
+            <div class="step-num">3</div>
+            <div><strong>Real-time push</strong> — score + rationale appear on your dashboard via WebSocket</div>
+          </li>
+          <li>
+            <div class="step-num">4</div>
+            <div><strong>Chat interface</strong> — ask "why is AAPL flagged?" and get a portfolio-aware answer</div>
+          </li>
+        </ul>
+      </div>
+      <div class="card" style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <div class="eyebrow" style="margin-bottom: 6px;">Risk score</div>
+          <div style="font-size: 2.5rem; font-weight: 800; color: #fbbf24;">72 / 100</div>
+          <div class="muted" style="font-size: 0.9rem;">SELL signal</div>
+        </div>
+        <div style="border-top: 1px solid #2d3748; padding-top: 16px;">
+          <div class="eyebrow" style="margin-bottom: 6px;">AI Rationale</div>
+          <p style="font-size: 0.95rem; font-style: italic; color: #94a3b8;">
+            "Elevated beta and high P/E relative to sector peers suggest downside risk if growth expectations miss."
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: The Agent Loop -->
+  <div class="slide slide-agent" id="slide-4">
+    <div class="eyebrow">Technical Deep Dive</div>
+    <h2>The <span class="accent">Agentic Loop</span></h2>
+    <div class="divider"></div>
+    <div class="cols cols-2" style="align-items: start;">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div><strong>Memory</strong> — injects previous score + rationale so the LLM reasons about <em>what changed</em></div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div><strong>Tool pre-fetch</strong> — yfinance, Finnhub news, SEC EDGAR all fetched concurrently via asyncio.gather</div>
+        </li>
+        <li>
+          <div class="step-num">3</div>
+          <div><strong>Initial analysis</strong> — LLM produces AI_RISK_SCORE, AI_RECOMMENDATION, RATIONALE</div>
+        </li>
+        <li>
+          <div class="step-num">4</div>
+          <div><strong>Reflection</strong> — LLM critiques its own output, revises if delta &gt; threshold</div>
+        </li>
+        <li>
+          <div class="step-num">5</div>
+          <div><strong>Guardrails</strong> — strips &lt;think&gt; blocks, detects leaked prompts, sanitizes output</div>
+        </li>
+      </ul>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="code-block">
+# 8-model fallback chain<br>
+mistral-7b → llama-3.1-8b<br>
+→ gemma-3-4b → qwen3-8b<br>
+→ nemotron → stepfun<br>
+→ phi-4 → deepseek-r1<br>
+<br>
+# Rotates on 429 rate limits<br>
+# 1s sleep between retries
+        </div>
+        <div class="card card-sm">
+          <h3 style="margin-bottom: 8px;">Portfolio analysis</h3>
+          <p style="font-size: 0.95rem;">After all tickers complete, a cross-ticker pass flags concentration risk (&gt;40% in one sector) and broadcasts a summary via WebSocket.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Vibe Coding -->
+  <div class="slide slide-vibe" id="slide-5">
+    <div class="eyebrow">AI-Assisted Development</div>
+    <h2>Built with <span class="accent">Kiro</span> — spec to ship in one session</h2>
+    <div class="divider"></div>
+    <div class="cols cols-2">
+      <div>
+        <p style="margin-bottom: 24px;">Kiro handled the full dev loop. Not just autocomplete — the entire process.</p>
+        <ul class="steps">
+          <li>
+            <div class="step-num">📋</div>
+            <div><strong>Spec writing</strong> — requirements, design, tasks generated from a rough idea</div>
+          </li>
+          <li>
+            <div class="step-num">⚙️</div>
+            <div><strong>Code generation</strong> — backend, frontend, migrations, tests all from spec context</div>
+          </li>
+          <li>
+            <div class="step-num">🐛</div>
+            <div><strong>Debugging</strong> — bugs caught and fixed in the same turn they appeared</div>
+          </li>
+          <li>
+            <div class="step-num">🧪</div>
+            <div><strong>Property-based tests</strong> — generated from acceptance criteria, not written by hand</div>
+          </li>
+        </ul>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="card card-sm">
+          <h3>Bugs fixed by AI</h3>
+          <p style="font-size: 0.95rem; color: #94a3b8;">
+            <code style="color: #fbbf24;">KeyError: 'sub'</code> — Civic Auth uses <code style="color: #6ee7b7;">"id"</code> not <code style="color: #6ee7b7;">"sub"</code><br><br>
+            Duplicate function definition from mid-edit cutoff<br><br>
+            <code style="color: #fbbf24;">tools_config.yaml not found</code> — path resolved relative to repo root
+          </p>
+        </div>
+        <div class="card card-sm">
+          <h3>What this enabled</h3>
+          <p style="font-size: 0.95rem; color: #94a3b8;">A 2-week sprint scope delivered in a single hackathon session. Full backend + frontend + tests + docs.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: What We Shipped -->
+  <div class="slide slide-demo" id="slide-6">
+    <div class="eyebrow">What We Shipped</div>
+    <h2>Full stack, end to end</h2>
+    <div class="divider"></div>
+    <div class="cols cols-3">
+      <div class="card card-sm">
+        <h3>Backend</h3>
+        <p style="font-size: 0.9rem; color: #94a3b8; line-height: 1.8;">
+          FastAPI + PostgreSQL<br>
+          Async SQLAlchemy + asyncpg<br>
+          5 Alembic migrations<br>
+          APScheduler (30 min refresh)<br>
+          Civic Auth JWT<br>
+          SlowAPI rate limiting<br>
+          WebSocket manager
+        </p>
+      </div>
+      <div class="card card-sm">
+        <h3>Frontend</h3>
+        <p style="font-size: 0.9rem; color: #94a3b8; line-height: 1.8;">
+          React 18 + TypeScript<br>
+          TanStack Query v5<br>
+          Recharts (1w/1y/2y chart)<br>
+          Slide-out chat drawer<br>
+          Portfolio analysis banner<br>
+          Live WebSocket updates<br>
+          Dark theme throughout
+        </p>
+      </div>
+      <div class="card card-sm">
+        <h3>Quality</h3>
+        <p style="font-size: 0.9rem; color: #94a3b8; line-height: 1.8;">
+          86 passing unit tests<br>
+          Hypothesis property-based tests<br>
+          Scoring, adapters, models, parser<br>
+          Output guardrails (12 patterns)<br>
+          &lt;think&gt; block stripping<br>
+          Score-derived fallback rationale<br>
+          Deployed on Railway
+        </p>
+      </div>
+    </div>
+    <div class="cols cols-4" style="grid-template-columns: repeat(4, 1fr); margin-top: 28px; gap: 20px;">
+      <div class="stat"><div class="stat-num">86</div><div class="stat-label">passing tests</div></div>
+      <div class="stat"><div class="stat-num">8</div><div class="stat-label">LLM fallbacks</div></div>
+      <div class="stat"><div class="stat-num">5</div><div class="stat-label">DB migrations</div></div>
+      <div class="stat"><div class="stat-num">1</div><div class="stat-label">session to build</div></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Agent Evaluation -->
+  <div class="slide slide-eval" id="slide-7">
+    <div class="eyebrow">Honest Assessment</div>
+    <h2>How good is the agent?</h2>
+    <div class="divider"></div>
+    <div class="cols cols-2" style="align-items: start;">
+      <div>
+        <div class="rating-row">
+          <div class="rating-label">Autonomy</div>
+          <div class="rating-bar-bg"><div class="rating-bar" style="width: 60%;"></div></div>
+          <div class="rating-text">Moderate</div>
+        </div>
+        <div class="rating-row">
+          <div class="rating-label">Usefulness</div>
+          <div class="rating-bar-bg"><div class="rating-bar" style="width: 85%;"></div></div>
+          <div class="rating-text">High</div>
+        </div>
+        <div class="rating-row">
+          <div class="rating-label">Technical depth</div>
+          <div class="rating-bar-bg"><div class="rating-bar" style="width: 70%;"></div></div>
+          <div class="rating-text">Good</div>
+        </div>
+        <div class="rating-row">
+          <div class="rating-label">Creativity</div>
+          <div class="rating-bar-bg"><div class="rating-bar" style="width: 80%;"></div></div>
+          <div class="rating-text">High</div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="card card-sm">
+          <h3>What works well</h3>
+          <p style="font-size: 0.9rem; color: #94a3b8;">Tool use, memory, error recovery, reflection loop, 8-model fallback, real-time WS push, conversational interface</p>
+        </div>
+        <div class="card card-sm">
+          <h3>What would push it further</h3>
+          <p style="font-size: 0.9rem; color: #94a3b8;">Agent-initiated refresh on news spikes · Persistent chat history · Sector-aware tool selection · Per-user rationale</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Close -->
+  <div class="slide slide-close" id="slide-8">
+    <div class="eyebrow">Thank you</div>
+    <h1>Stock Portfolio<br><span class="accent">Advisor</span></h1>
+    <div class="divider"></div>
+    <p style="font-size: 1.2rem; max-width: 600px; margin-bottom: 36px;">
+      The only portfolio tool that shows you the score, explains the reasoning, and lets you argue with it.
+    </p>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 40px;">
+      <span class="pill pill-green">github.com/ntcool2026/Hackathon2026</span>
+    </div>
+    <div class="cols cols-3" style="max-width: 700px;">
+      <div class="stat"><div class="stat-num accent2">FastAPI</div><div class="stat-label">Backend</div></div>
+      <div class="stat"><div class="stat-num accent">React</div><div class="stat-label">Frontend</div></div>
+      <div class="stat"><div class="stat-num accent3">Kiro</div><div class="stat-label">Built with</div></div>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<div class="nav">
+  <button onclick="prev()">← Prev</button>
+  <span class="slide-counter" id="counter">1 / 8</span>
+  <button onclick="next()">Next →</button>
+</div>
+
+<script>
+  const total = 8;
+  let current = 1;
+
+  function show(n) {
+    document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+    document.getElementById('slide-' + n).classList.add('active');
+    document.getElementById('counter').textContent = n + ' / ' + total;
+    document.getElementById('progress').style.width = (n / total * 100) + '%';
+    current = n;
+  }
+
+  function next() { if (current < total) show(current + 1); }
+  function prev() { if (current > 1) show(current - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); prev(); }
+  });
+
+  show(1);
+</script>
+</body>
+</html>
