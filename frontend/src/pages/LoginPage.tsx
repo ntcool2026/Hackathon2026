@@ -1,3 +1,4 @@
+// LoginPage — render-time auth redirect, no useNavigate needed
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
