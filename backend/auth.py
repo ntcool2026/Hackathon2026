@@ -130,8 +130,14 @@ async def auth_callback(code: str, state: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
-    # Pass the id_token as a URL fragment — never sent to server, stored by frontend JS
-    id_token = await storage.get(CivicAuth.ID_TOKEN_KEY)
+    # Extract the id_token from the Set-Cookie headers on temp_response
+    # (storage.get reads request.cookies which don't have the new token yet)
+    id_token: Optional[str] = None
+    for value in temp_response.headers.getlist("set-cookie"):
+        if value.startswith(f"{CivicAuth.ID_TOKEN_KEY}="):
+            id_token = value.split(";")[0].split("=", 1)[1]
+            break
+
     redirect_url = (
         f"{_FRONTEND_ORIGIN}/dashboard#token={id_token}"
         if id_token
