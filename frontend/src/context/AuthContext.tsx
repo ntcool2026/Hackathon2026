@@ -23,6 +23,27 @@ export function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+/** Decode JWT payload without verifying signature (client-side only). */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(payload))
+  } catch {
+    return null
+  }
+}
+
+/** Returns true if the token exists and is not expired. */
+function isTokenValid(token: string): boolean {
+  const claims = decodeJwtPayload(token)
+  if (!claims) return false
+  const exp = claims.exp as number | undefined
+  if (exp && Date.now() / 1000 > exp) return false
+  return true
+}
+
 interface AuthState {
   user: Record<string, unknown> | null
   loading: boolean
@@ -40,6 +61,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const refresh = async () => {
+    const token = getToken()
+    // Fast path: decode claims from local token without a network round-trip
+    if (token && isTokenValid(token)) {
+      const claims = decodeJwtPayload(token)
+      if (claims) {
+        setUser(claims)
+        setLoading(false)
+        return
+      }
+    }
+    // No valid local token — try the server (handles cookie fallback / token refresh)
     try {
       const res = await fetch(`${API_BASE}/auth/user`, {
         credentials: 'include',
@@ -49,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json()
         setUser(data)
       } else {
+        clearToken()
         setUser(null)
       }
     } catch {
@@ -71,7 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (hash.startsWith('#token=')) {
       const token = hash.slice(7)
       setToken(token)
-      // Clean up the URL
       window.history.replaceState(null, '', window.location.pathname)
     }
     refresh()
