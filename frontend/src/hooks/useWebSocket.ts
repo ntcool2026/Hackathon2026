@@ -11,7 +11,7 @@ export interface PortfolioAnalysis {
 
 export function useWebSocket(
   userId: string | null,
-  _token: string | null,
+  token: string | null,
   onPortfolioAnalysis?: (data: PortfolioAnalysis) => void,
 ) {
   const queryClient = useQueryClient()
@@ -22,10 +22,10 @@ export function useWebSocket(
   onPortfolioAnalysisRef.current = onPortfolioAnalysis
 
   useEffect(() => {
-    if (!userId) return
+    if (!userId || !token) return
 
     function connect() {
-      const url = `${WS_BASE}/ws/${userId}`
+      const url = `${WS_BASE}/ws/${userId}?token=${encodeURIComponent(token!)}`
       const ws = new WebSocket(url)
       wsRef.current = ws
 
@@ -111,5 +111,5 @@ export function useWebSocket(
       if (retryRef.current) clearTimeout(retryRef.current)
       wsRef.current?.close()
     }
-  }, [userId, queryClient])
+  }, [userId, token, queryClient])
 }

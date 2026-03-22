@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { getToken } from '../context/AuthContext'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { apiFetch } from '../hooks/useApi'
 
@@ -40,7 +41,7 @@ async function deletePortfolio(id: string): Promise<void> {
 export default function Dashboard() {
   const { user } = useAuth()
   const userId = (user?.id as string) ?? null
-  useWebSocket(userId, null)
+  useWebSocket(userId, getToken())
 
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
