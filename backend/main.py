@@ -126,11 +126,14 @@ async def private_network_access(request: Request, call_next):
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS — allow frontend origin (configure via env in production)
+# CORS — allow frontend origin(s) (configure via env in production)
 _frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+# Support comma-separated list of origins for multi-environment setups
+_allowed_origins = [o.strip() for o in _frontend_origin.split(",") if o.strip()]
+_allowed_origins.append("http://localhost:8000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[_frontend_origin, "http://localhost:8000"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

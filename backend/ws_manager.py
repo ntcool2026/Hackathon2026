@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -56,14 +57,37 @@ ws_manager = WebSocketManager()
 async def websocket_endpoint(
     websocket: WebSocket,
     user_id: str,
+    token: Optional[str] = None,
 ) -> None:
-    """Accept a WebSocket connection. Auth is cookie-based (Civic Auth)."""
-    from backend.auth import civic_auth_dep  # avoid circular import at module level
+    """Accept a WebSocket connection.
 
-    # Verify the user via cookie using the Civic dependency
+    Auth supports two modes:
+    - Cookie-based (local dev): Civic Auth cookie read automatically
+    - Bearer token (deployed): pass ?token=<id_token> as query param
+    """
+    from backend.auth import CivicAuth
+    from backend.auth import _config
+    from backend.auth import HeaderOrCookieStorage
+    from fastapi.responses import Response
+
+    # Build a fake response object so HeaderOrCookieStorage can write cookies if needed
+    fake_response = Response()
+
+    # If a token query param was provided, inject it as a fake Authorization header
+    if token:
+        # Patch the headers to include the Bearer token
+        scope = dict(websocket.scope)
+        existing_headers = list(scope.get("headers", []))
+        existing_headers.append((b"authorization", f"Bearer {token}".encode()))
+        scope["headers"] = existing_headers
+        websocket._scope = scope  # type: ignore[attr-defined]
+
+    storage = HeaderOrCookieStorage(websocket, fake_response)  # type: ignore[arg-type]
+    civic = CivicAuth(storage, _config)
+
     try:
-        user = await civic_auth_dep(websocket)
-        if user.get("id") != user_id:
+        user = await civic.get_user()
+        if not user or user.get("id") != user_id:
             await websocket.close(code=4001)
             return
     except Exception:

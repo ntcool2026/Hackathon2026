@@ -1,15 +1,24 @@
+import { getStoredToken } from '../context/AuthContext'
+
 /**
- * Thin fetch wrapper that handles common HTTP error codes:
- * - 401 → redirect to /login
- * - 429 → throw with retry message
- * - 409 → throw with limit message
- * - 422 → throw with validation detail
+ * Thin fetch wrapper that:
+ * - Injects Authorization: Bearer header when a token is stored
+ * - Handles common HTTP error codes: 401, 429, 409, 422
  */
 export async function apiFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
-  const res = await fetch(input, { credentials: 'include', ...init })
+  const token = getStoredToken()
+  const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+
+  const res = await fetch(input, {
+    credentials: 'include',
+    ...init,
+    headers: {
+      ...authHeaders,
+      ...(init?.headers as Record<string, string> | undefined),
+    },
+  })
 
   if (res.status === 401) {
-    // Clear any stale session state and bounce to login
     window.location.href = '/login'
     throw new Error('Unauthorized')
   }

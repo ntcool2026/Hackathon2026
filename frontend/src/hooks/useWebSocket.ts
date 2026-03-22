@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { getStoredToken } from '../context/AuthContext'
 
 const WS_BASE = import.meta.env.VITE_WS_URL ?? `ws://${window.location.host}`
 const MAX_BACKOFF_MS = 30_000
@@ -25,7 +26,10 @@ export function useWebSocket(
     if (!userId) return
 
     function connect() {
-      const url = `${WS_BASE}/ws/${userId}`
+      const token = getStoredToken()
+      const url = token
+        ? `${WS_BASE}/ws/${userId}?token=${encodeURIComponent(token)}`
+        : `${WS_BASE}/ws/${userId}`
       const ws = new WebSocket(url)
       wsRef.current = ws
 
