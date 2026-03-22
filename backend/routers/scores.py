@@ -1,9 +1,10 @@
 """Scores router: read current scores, rationale, history, and price charts."""
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
-import asyncio
 
 from backend.auth import get_current_user, get_or_create_user, require_auth
 from backend.db import AsyncSession, get_db
@@ -31,7 +32,6 @@ async def trigger_refresh(user: dict = Depends(get_current_user)):
     """Manually trigger the data pipeline and LLM agent cycle."""
     from backend.agent import run_data_pipeline
     from backend.llm_agent import run_llm_agent_cycle
-    import asyncio
 
     # Guard against concurrent manual refreshes
     if _refresh_lock.locked():
@@ -106,7 +106,6 @@ async def get_multi_price_history(
     user: dict = Depends(get_current_user),
 ):
     """Return close price history for multiple tickers, normalised to % change from first point."""
-    import asyncio
     from backend.adapters.yfinance_adapter import YFinanceAdapter
     adapter = YFinanceAdapter()
     ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()][:10]

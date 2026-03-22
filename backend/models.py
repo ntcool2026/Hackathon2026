@@ -70,7 +70,7 @@ class ScoreBreakdown(BaseModel):
     criteria_adjustment: float = Field(0.0, ge=0, le=20)
     # Final outputs
     final_score: float = Field(0.0, ge=0, le=100)
-    recommendation: Optional["Recommendation"] = None
+    recommendation: Recommendation | None = None
 
 
 class StockScore(BaseModel):

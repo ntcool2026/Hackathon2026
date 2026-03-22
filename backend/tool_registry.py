@@ -1,16 +1,11 @@
 """ToolRegistry: loads tools_config.yaml and exposes LangChain StructuredTools."""
 from __future__ import annotations
 
-import logging
-
 import yaml
 from langchain_core.tools import StructuredTool
 
 from backend.base_adapter import BaseAdapter
 from backend.settings import settings
-
-logger = logging.getLogger(__name__)
-
 
 class ToolRegistry:
     """Loads tools_config.yaml at startup and wraps enabled adapters as LangChain tools."""

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # In-memory session store: user_id → list of message dicts (role/content)
 _chat_sessions: dict[str, list[dict[str, str]]] = {}
-_MAX_TURNS = 5  # 5 user + 5 assistant = 10 messages max
+_MAX_HISTORY_MESSAGES = 10  # keep last 5 user + 5 assistant messages
 
 _NO_HOLDINGS_REPLY = (
     "You have no holdings in your portfolio yet. Add some tickers to get started."
@@ -27,10 +27,9 @@ _NO_HOLDINGS_REPLY = (
 
 
 def _trim_history(history: list[dict]) -> list[dict]:
-    """Keep at most _MAX_TURNS turns (2 messages per turn)."""
-    max_messages = _MAX_TURNS * 2
-    if len(history) > max_messages:
-        return history[-max_messages:]
+    """Keep at most _MAX_HISTORY_MESSAGES messages."""
+    if len(history) > _MAX_HISTORY_MESSAGES:
+        return history[-_MAX_HISTORY_MESSAGES:]
     return history
 
 

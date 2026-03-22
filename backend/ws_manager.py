@@ -42,11 +42,6 @@ class WebSocketManager:
         for ws in dead:
             self.disconnect(user_id, ws)
 
-    async def broadcast_all(self, event: WSEvent) -> None:
-        """Send an event to every connected user."""
-        for user_id in list(self._connections.keys()):
-            await self.broadcast_to_user(user_id, event)
-
 
 # Singleton instance shared across the application
 ws_manager = WebSocketManager()
