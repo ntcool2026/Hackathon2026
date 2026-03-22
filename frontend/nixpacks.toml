@@ -2,4 +2,4 @@
 cmds = ["npm ci", "npm run build"]
 
 [start]
-cmd = "npx serve -s dist -l $PORT"
+cmd = "npx serve dist -l $PORT --single"
