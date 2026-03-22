@@ -17,6 +17,23 @@ function clearToken() {
   sessionStorage.removeItem(TOKEN_KEY)
 }
 
+/**
+ * Extract token from URL fragment (#token=...) if present.
+ * Must be called before React Router strips/processes the URL.
+ */
+function extractFragmentToken(): string | null {
+  const hash = window.location.hash
+  if (!hash) return null
+  // Support both #token=... and #token=...&other=params
+  const match = hash.match(/[#&]token=([^&]+)/)
+  if (!match) return null
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return match[1]
+  }
+}
+
 interface AuthState {
   user: Record<string, unknown> | null
   loading: boolean
@@ -35,15 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = async () => {
     try {
-      // Check URL fragment for token passed from backend callback
-      const hash = window.location.hash
-      if (hash.startsWith('#token=')) {
-        const fragmentToken = decodeURIComponent(hash.slice(7))
-        if (fragmentToken) {
-          storeToken(fragmentToken)
-          // Clean the fragment from the URL without triggering a reload
-          window.history.replaceState(null, '', window.location.pathname)
-        }
+      // Extract token from URL fragment FIRST (before anything else touches the URL)
+      const fragmentToken = extractFragmentToken()
+      if (fragmentToken) {
+        storeToken(fragmentToken)
+        // Clean the fragment from the URL without triggering a reload
+        window.history.replaceState(null, '', window.location.pathname + window.location.search)
       }
 
       const token = getStoredToken()
@@ -59,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json()
         setUser(data)
 
-        // If we don't have a stored token yet, try to fetch one from the cookie
+        // If we don't have a stored token yet, try to fetch one from the cookie (local dev)
         if (!token) {
           try {
             const tokenRes = await fetch(`${API_BASE}/auth/token`, { credentials: 'include' })
