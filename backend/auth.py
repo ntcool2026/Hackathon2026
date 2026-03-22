@@ -102,10 +102,20 @@ async def require_auth(request: Request, response: Response) -> None:
 _civic_router = create_auth_router(_config)
 auth_router = APIRouter()
 
-# Re-register all civic routes except /auth/callback
+# Re-register all civic routes except /auth/callback and /auth/user
 for route in _civic_router.routes:
-    if route.path != "/auth/callback":  # type: ignore[attr-defined]
+    if route.path not in ("/auth/callback", "/auth/user"):  # type: ignore[attr-defined]
         auth_router.routes.append(route)
+
+
+# Override /auth/user to use our hybrid Bearer+cookie dependency
+@auth_router.get("/auth/user")
+async def get_user_endpoint(request: Request, response: Response):
+    civic = await civic_auth_dep(request, response)
+    user = await civic.get_user()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return user
 
 
 # Custom callback: resolve code, then redirect to frontend with token in URL fragment
@@ -134,7 +144,6 @@ async def auth_callback(code: str, state: str, request: Request):
         if key.lower() == "set-cookie":
             redirect_response.headers.append(key, value)
 
-    return redirect_response
     return redirect_response
 
 
