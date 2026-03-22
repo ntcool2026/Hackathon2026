@@ -101,37 +101,39 @@ export default function Dashboard() {
 
       {/* Inline create form */}
       {creating && (
-        <form
-          onSubmit={handleCreate}
-          className="card"
-          style={{ display: 'flex', gap: 8, padding: 12, marginBottom: 16, alignItems: 'center' }}
-        >
-          <input
-            autoFocus
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Portfolio name…"
-            style={{
-              flex: 1,
-              padding: '7px 12px',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: 14,
-              outline: 'none',
-            }}
-          />
-          <button className="btn-primary" type="submit" disabled={createMutation.isPending || !newName.trim()}>
-            {createMutation.isPending ? 'Creating…' : 'Create'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setCreating(false); setNewName(''); setCreateError(null) }}
-            style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}
+        <>
+          <form
+            onSubmit={handleCreate}
+            className="card"
+            style={{ display: 'flex', gap: 8, padding: 12, marginBottom: 8, alignItems: 'center' }}
           >
-            ×
-          </button>
-        </form>
-      {createError && <p style={{ color: 'var(--color-sell)', fontSize: 13, marginBottom: 8 }}>{createError}</p>}
+            <input
+              autoFocus
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Portfolio name…"
+              style={{
+                flex: 1,
+                padding: '7px 12px',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 14,
+                outline: 'none',
+              }}
+            />
+            <button className="btn-primary" type="submit" disabled={createMutation.isPending || !newName.trim()}>
+              {createMutation.isPending ? 'Creating…' : 'Create'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCreating(false); setNewName(''); setCreateError(null) }}
+              style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}
+            >
+              ×
+            </button>
+          </form>
+          {createError && <p style={{ color: 'var(--color-sell)', fontSize: 13, marginBottom: 8 }}>{createError}</p>}
+        </>
       )}
 
       {portfolios.length === 0 && !creating && (
