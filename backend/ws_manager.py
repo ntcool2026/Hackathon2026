@@ -71,7 +71,12 @@ async def websocket_endpoint(
         return
 
     claims = parse_jwt_without_validation(token)
-    if not claims or claims.get("id") != user_id:
+    if not claims:
+        await websocket.close(code=4001)
+        return
+    # Map sub → id to match Civic's BaseUser shape
+    user_id_from_token = claims.get("id") or claims.get("sub")
+    if not user_id_from_token or user_id_from_token != user_id:
         await websocket.close(code=4001)
         return
 

@@ -59,6 +59,9 @@ async def get_current_user(request: Request) -> dict:
     claims = parse_jwt_without_validation(id_token)
     if not claims:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    # Map sub → id to match Civic's BaseUser shape expected by get_or_create_user
+    if "id" not in claims and "sub" in claims:
+        claims["id"] = claims["sub"]
     return claims
 
 
@@ -96,13 +99,14 @@ async def auth_callback(code: str, state: str, request: Request):
 
 @auth_router.get("/auth/user")
 async def auth_user(request: Request, response: Response):
-    # Support both cookie-based and Bearer token auth
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         id_token = auth_header[7:]
         claims = parse_jwt_without_validation(id_token)
         if not claims:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        if "id" not in claims and "sub" in claims:
+            claims["id"] = claims["sub"]
         return claims
 
     # Fallback to cookie

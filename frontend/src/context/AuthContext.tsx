@@ -62,7 +62,11 @@ function isTokenValid(token: string): boolean {
 function initUserFromStorage(): Record<string, unknown> | null {
   const token = getToken()
   if (token && isTokenValid(token)) {
-    return decodeJwtPayload(token)
+    const claims = decodeJwtPayload(token)
+    if (!claims) return null
+    // Map sub → id to match Civic's BaseUser shape
+    if (!claims.id && claims.sub) claims.id = claims.sub
+    return claims
   }
   return null
 }
@@ -89,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token && isTokenValid(token)) {
       const claims = decodeJwtPayload(token)
       if (claims) {
+        if (!claims.id && claims.sub) claims.id = claims.sub
         setUser(claims)
         setLoading(false)
         return
