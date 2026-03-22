@@ -131,12 +131,14 @@ _frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 # Support comma-separated list of origins for multi-environment setups
 _allowed_origins = [o.strip() for o in _frontend_origin.split(",") if o.strip()]
 _allowed_origins.append("http://localhost:8000")
+_allowed_origins.append("http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origin_regex=r"https://.*\.onrender\.com",
 )
 
 # ---------------------------------------------------------------------------
