@@ -65,25 +65,16 @@ async def websocket_endpoint(
     - Cookie-based (local dev): Civic Auth cookie read automatically
     - Bearer token (deployed): pass ?token=<id_token> as query param
     """
-    from backend.auth import CivicAuth
-    from backend.auth import _config
-    from backend.auth import HeaderOrCookieStorage
-    from fastapi.responses import Response
+    from backend.auth import CivicAuth, MemoryStorage, _config
 
-    # Build a fake response object so HeaderOrCookieStorage can write cookies if needed
-    fake_response = Response()
-
-    # If a token query param was provided, inject it as a fake Authorization header
+    # Build storage from token query param or cookies
     if token:
-        # Patch the headers to include the Bearer token
-        scope = dict(websocket.scope)
-        existing_headers = list(scope.get("headers", []))
-        existing_headers.append((b"authorization", f"Bearer {token}".encode()))
-        scope["headers"] = existing_headers
-        websocket._scope = scope  # type: ignore[attr-defined]
+        mem = MemoryStorage({CivicAuth.ID_TOKEN_KEY: token})
+    else:
+        # Fall back to cookies (local dev)
+        mem = MemoryStorage({k: v for k, v in websocket.cookies.items()})
 
-    storage = HeaderOrCookieStorage(websocket, fake_response)  # type: ignore[arg-type]
-    civic = CivicAuth(storage, _config)
+    civic = CivicAuth(mem, _config)
 
     try:
         user = await civic.get_user()
