@@ -272,39 +272,45 @@
       <ul class="steps">
         <li>
           <div class="step-num">1</div>
-          <div><strong>Memory</strong> — injects previous score + rationale so the LLM reasons about <em>what changed</em></div>
+          <div><strong>Memory</strong> — previous score + rationale injected into system prompt so the LLM reasons about <em>what changed</em>, not just the current snapshot</div>
         </li>
         <li>
           <div class="step-num">2</div>
-          <div><strong>Tool pre-fetch</strong> — yfinance, Finnhub news, SEC EDGAR all fetched concurrently via asyncio.gather</div>
+          <div><strong>Concurrent tool fetch</strong> — yfinance (price/fundamentals), Finnhub (news sentiment), SEC EDGAR (filings) all fetched in parallel via <code style="color:#6ee7b7">asyncio.gather</code> — no waiting</div>
         </li>
         <li>
           <div class="step-num">3</div>
-          <div><strong>Initial analysis</strong> — LLM produces AI_RISK_SCORE, AI_RECOMMENDATION, RATIONALE</div>
+          <div><strong>Structured output</strong> — LLM must emit exactly <code style="color:#6ee7b7">AI_RISK_SCORE / AI_RECOMMENDATION / RATIONALE</code>. Regex parser with 3 fallback strategies extracts values even from noisy output</div>
         </li>
         <li>
           <div class="step-num">4</div>
-          <div><strong>Reflection</strong> — LLM critiques its own output, revises if delta &gt; threshold</div>
+          <div><strong>Self-reflection</strong> — LLM critiques its own answer. If score delta &gt; threshold it revises. Stops early when it converges</div>
         </li>
         <li>
           <div class="step-num">5</div>
-          <div><strong>Guardrails</strong> — strips &lt;think&gt; blocks, detects leaked prompts, sanitizes output</div>
+          <div><strong>Guardrails</strong> — 12 regex patterns detect leaked prompt templates. <code style="color:#6ee7b7">&lt;think&gt;</code> blocks stripped. Score-derived fallback if rationale is garbage</div>
         </li>
       </ul>
-      <div style="display: flex; flex-direction: column; gap: 16px;">
-        <div class="code-block">
-# 8-model fallback chain<br>
-mistral-7b → llama-3.1-8b<br>
-→ gemma-3-4b → qwen3-8b<br>
-→ nemotron → stepfun<br>
-→ phi-4 → deepseek-r1<br>
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="code-block" style="font-size: 0.82rem;">
+# 8-model fallback chain (free tier)<br>
+mistral-7b → llama-3.1-8b → gemma-3-4b<br>
+→ qwen3-8b → nemotron-120b<br>
+→ stepfun → phi-4 → deepseek-r1<br>
 <br>
-# Rotates on 429 rate limits<br>
-# 1s sleep between retries
+# Rotates on 429 · 1s backoff<br>
+# Skips models that ignore tool schemas<br>
+# Semaphore limits concurrency
         </div>
         <div class="card card-sm">
-          <h3 style="margin-bottom: 8px;">Portfolio analysis</h3>
-          <p style="font-size: 0.95rem;">After all tickers complete, a cross-ticker pass flags concentration risk (&gt;40% in one sector) and broadcasts a summary via WebSocket.</p>
+          <h3 style="margin-bottom: 6px;">Portfolio-level reasoning</h3>
+          <p style="font-size: 0.88rem; color: #94a3b8;">After all per-ticker loops finish, a second LLM pass looks across the whole portfolio — flags sector concentration &gt;40%, generates a single cross-ticker risk summary, pushes via WebSocket.</p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <span class="pill pill-green">Multi-step</span>
+          <span class="pill pill-blue">Tool use</span>
+          <span class="pill pill-yellow">Self-critique</span>
+          <span class="pill pill-purple">Memory</span>
         </div>
       </div>
     </div>
@@ -317,38 +323,45 @@ mistral-7b → llama-3.1-8b<br>
     <div class="divider"></div>
     <div class="cols cols-2">
       <div>
-        <p style="margin-bottom: 24px;">Kiro handled the full dev loop. Not just autocomplete — the entire process.</p>
+        <p style="margin-bottom: 20px; color: #94a3b8;">Not just autocomplete. Kiro ran the entire development loop — from rough idea to deployed app.</p>
         <ul class="steps">
           <li>
             <div class="step-num">📋</div>
-            <div><strong>Spec writing</strong> — requirements, design, tasks generated from a rough idea</div>
+            <div><strong>Spec-driven</strong> — wrote requirements, design doc, and task list from a one-line idea. Tasks executed one by one with full context</div>
           </li>
           <li>
             <div class="step-num">⚙️</div>
-            <div><strong>Code generation</strong> — backend, frontend, migrations, tests all from spec context</div>
+            <div><strong>Full-stack generation</strong> — FastAPI routers, React components, Alembic migrations, property-based tests — all from spec context, not prompts</div>
           </li>
           <li>
             <div class="step-num">🐛</div>
-            <div><strong>Debugging</strong> — bugs caught and fixed in the same turn they appeared</div>
+            <div><strong>Live debugging</strong> — <code style="color:#fbbf24">KeyError: 'sub'</code> (Civic Auth uses <code style="color:#6ee7b7">"id"</code>), duplicate function from mid-edit cutoff, YAML path resolution — all caught and fixed in the same turn</div>
           </li>
           <li>
             <div class="step-num">🧪</div>
-            <div><strong>Property-based tests</strong> — generated from acceptance criteria, not written by hand</div>
+            <div><strong>Property-based tests</strong> — Hypothesis strategies generated from acceptance criteria. 86 tests, zero written by hand</div>
           </li>
         </ul>
       </div>
-      <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; flex-direction: column; gap: 14px;">
         <div class="card card-sm">
-          <h3>Bugs fixed by AI</h3>
-          <p style="font-size: 0.95rem; color: #94a3b8;">
-            <code style="color: #fbbf24;">KeyError: 'sub'</code> — Civic Auth uses <code style="color: #6ee7b7;">"id"</code> not <code style="color: #6ee7b7;">"sub"</code><br><br>
-            Duplicate function definition from mid-edit cutoff<br><br>
-            <code style="color: #fbbf24;">tools_config.yaml not found</code> — path resolved relative to repo root
+          <h3>The workflow</h3>
+          <p style="font-size: 0.88rem; color: #94a3b8; line-height: 1.8;">
+            Idea → <span style="color:#6ee7b7">requirements.md</span> → <span style="color:#6ee7b7">design.md</span> → <span style="color:#6ee7b7">tasks.md</span><br>
+            → Kiro executes each task → reviews output → next task<br>
+            → Git commit after each phase<br>
+            → Deploy config generated on request
           </p>
         </div>
         <div class="card card-sm">
-          <h3>What this enabled</h3>
-          <p style="font-size: 0.95rem; color: #94a3b8;">A 2-week sprint scope delivered in a single hackathon session. Full backend + frontend + tests + docs.</p>
+          <h3>What Kiro handled autonomously</h3>
+          <p style="font-size: 0.88rem; color: #94a3b8; line-height: 1.7;">
+            DB schema design · async SQLAlchemy patterns · WebSocket broadcast architecture · LLM prompt engineering · guardrail regex · test strategy · Railway deployment config
+          </p>
+        </div>
+        <div class="card card-sm">
+          <h3>Net result</h3>
+          <p style="font-size: 0.88rem; color: #94a3b8;">A 2-week sprint scope — full backend, frontend, tests, docs, deployment — delivered in a single hackathon session.</p>
         </div>
       </div>
     </div>
