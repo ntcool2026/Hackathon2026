@@ -6,7 +6,7 @@ import os
 
 from civic_auth.integrations.fastapi import create_auth_dependencies, create_auth_router, FastAPICookieStorage, CivicAuth
 from civic_auth.types import AuthConfig
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,33 +26,45 @@ _config: AuthConfig = {
     "redirect_url": os.getenv("AUTH_REDIRECT_URL", "http://localhost:8000/auth/callback"),
 }
 
+_COOKIE_SETTINGS: dict = {
+    "secure": True,
+    "same_site": "none",
+    "http_only": True,
+}
+
 # Use the civic router but override the callback to redirect to frontend
 _civic_router = create_auth_router(_config)
 civic_auth_dep, get_current_user, require_auth = create_auth_dependencies(_config)
 
-# Build our own router that includes all civic routes except callback
+# Build our own router that includes all civic routes except callback and user
 auth_router = APIRouter()
 
-# Re-register all civic routes except /auth/callback
+# Re-register all civic routes except /auth/callback and /auth/user
 for route in _civic_router.routes:
-    if route.path != "/auth/callback":  # type: ignore[attr-defined]
+    if route.path not in ("/auth/callback", "/auth/user"):  # type: ignore[attr-defined]
         auth_router.routes.append(route)
 
 # Custom callback that redirects to frontend after auth
 @auth_router.get("/auth/callback")
 async def auth_callback(code: str, state: str, request: Request):
     redirect_response = RedirectResponse(url=f"{_FRONTEND_ORIGIN}/dashboard", status_code=302)
-    storage = FastAPICookieStorage(request, redirect_response)
+    storage = FastAPICookieStorage(request, redirect_response, settings=_COOKIE_SETTINGS)
     civic = CivicAuth(storage, _config)
     try:
         await civic.resolve_oauth_access_code(code, state)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-    # Ensure auth cookie is cross-site compatible (Vercel frontend → Railway backend)
-    for key, value in redirect_response.headers.items():
-        if key.lower() == "set-cookie" and "samesite" not in value.lower():
-            redirect_response.headers[key] = value + "; SameSite=None; Secure"
     return redirect_response
+
+
+@auth_router.get("/auth/user")
+async def auth_user(request: Request, response: Response):
+    storage = FastAPICookieStorage(request, response, settings=_COOKIE_SETTINGS)
+    civic = CivicAuth(storage, _config)
+    user = await civic.get_user()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return user
 
 
 # ---------------------------------------------------------------------------
