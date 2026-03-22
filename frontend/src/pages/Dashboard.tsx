@@ -46,9 +46,10 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
 
-  const { data: portfolios = [], isLoading } = useQuery({
+  const { data: portfolios = [], isLoading, error: queryError } = useQuery({
     queryKey: ['portfolios'],
     queryFn: fetchPortfolios,
+    retry: 1,
   })
 
   const createMutation = useMutation({
@@ -72,6 +73,15 @@ export default function Dashboard() {
   }
 
   if (isLoading) return <p style={{ padding: 24, color: 'var(--color-text-sub)' }}>Loading…</p>
+
+  if (queryError) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center' }}>
+        <p style={{ color: 'var(--color-sell)', marginBottom: 8, fontWeight: 600 }}>Failed to load portfolios</p>
+        <p style={{ color: 'var(--color-text-sub)', fontSize: 13 }}>{queryError.message}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="page-container">
