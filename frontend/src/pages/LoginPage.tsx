@@ -1,16 +1,13 @@
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 export default function LoginPage() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
+  const { user, loading } = useAuth()
 
-  useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true })
-  }, [user, navigate])
+  if (loading) return null
+  if (user) return <Navigate to="/dashboard" replace />
 
   const handleLogin = () => {
     window.location.href = `${API_BASE}/auth/login`

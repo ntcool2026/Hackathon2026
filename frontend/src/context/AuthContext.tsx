@@ -85,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = async () => {
     const token = getToken()
+    // If we have a valid local token, use it — no network call needed
     if (token && isTokenValid(token)) {
       const claims = decodeJwtPayload(token)
       if (claims) {
@@ -93,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
     }
+    // No valid local token — try the server
     try {
       const res = await fetch(`${API_BASE}/auth/user`, {
         credentials: 'include',
@@ -102,11 +104,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json()
         setUser(data)
       } else {
-        clearToken()
-        setUser(null)
+        // Only clear token on explicit 401, not network errors
+        if (res.status === 401) {
+          clearToken()
+          setUser(null)
+        }
       }
     } catch {
-      setUser(null)
+      // Network error — don't clear existing auth state
     } finally {
       setLoading(false)
     }
