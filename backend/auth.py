@@ -131,12 +131,14 @@ async def auth_callback(code: str, state: str, request: Request):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     # Extract the id_token from the Set-Cookie headers on temp_response
-    # (storage.get reads request.cookies which don't have the new token yet)
+    # MutableHeaders collapses duplicate keys, so iterate raw_headers instead
     id_token: Optional[str] = None
-    for value in temp_response.headers.getlist("set-cookie"):
-        if value.startswith(f"{CivicAuth.ID_TOKEN_KEY}="):
-            id_token = value.split(";")[0].split("=", 1)[1]
-            break
+    for header_name, header_value in temp_response.raw_headers:
+        if header_name.lower() == b"set-cookie":
+            cookie_str = header_value.decode()
+            if cookie_str.startswith(f"{CivicAuth.ID_TOKEN_KEY}="):
+                id_token = cookie_str.split(";")[0].split("=", 1)[1]
+                break
 
     redirect_url = (
         f"{_FRONTEND_ORIGIN}/dashboard#token={id_token}"
@@ -146,9 +148,9 @@ async def auth_callback(code: str, state: str, request: Request):
     redirect_response = RedirectResponse(url=redirect_url, status_code=302)
 
     # Copy cookies onto redirect response (keeps local dev working)
-    for key, value in temp_response.headers.items():
-        if key.lower() == "set-cookie":
-            redirect_response.headers.append(key, value)
+    for header_name, header_value in temp_response.raw_headers:
+        if header_name.lower() == b"set-cookie":
+            redirect_response.headers.append("set-cookie", header_value.decode())
 
     return redirect_response
 
