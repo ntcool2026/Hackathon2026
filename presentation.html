@@ -175,6 +175,7 @@
   .slide-demo { background: radial-gradient(ellipse at 60% 40%, #1a1a0d 0%, #0f1117 60%); }
   .slide-eval { background: radial-gradient(ellipse at 50% 50%, #0d1f2d 0%, #0f1117 60%); }
   .slide-close { background: radial-gradient(ellipse at 50% 50%, #0d2a1f 0%, #0f1117 60%); }
+  .slide-challenges { background: radial-gradient(ellipse at 40% 50%, #1a0d0d 0%, #0f1117 60%); }
 </style>
 </head>
 <body>
@@ -460,8 +461,58 @@ mistral-7b → llama-3.1-8b → gemma-3-4b<br>
     </div>
   </div>
 
-  <!-- SLIDE 8: Close -->
-  <div class="slide slide-close" id="slide-8">
+  <!-- SLIDE 8: Challenges & Future -->
+  <div class="slide slide-challenges" id="slide-8">
+    <div class="eyebrow">Reflection & Roadmap</div>
+    <h2>Challenges &amp; <span class="accent">What's Next</span></h2>
+    <div class="divider"></div>
+    <div class="cols cols-2" style="align-items: start;">
+      <div>
+        <h3 style="margin-bottom: 16px;">Challenges we hit</h3>
+        <ul class="steps">
+          <li>
+            <div class="step-num" style="background:#f87171; color:#0f1117;">!</div>
+            <div><strong>Deployment complexity</strong> — cross-origin auth, cookie vs Bearer token, Railway + Vercel config took longer than the feature itself</div>
+          </li>
+          <li>
+            <div class="step-num" style="background:#f87171; color:#0f1117;">!</div>
+            <div><strong>AI tooling limits</strong> — Kiro excelled at code generation but struggled with hosting config and live environment debugging</div>
+          </li>
+          <li>
+            <div class="step-num" style="background:#f87171; color:#0f1117;">!</div>
+            <div><strong>LLM output fragility</strong> — free-tier models ignore tool schemas, hallucinate formats, or wrap output in <code style="color:#fbbf24">&lt;think&gt;</code> blocks — required 3-layer fallback parsing</div>
+          </li>
+          <li>
+            <div class="step-num" style="background:#f87171; color:#0f1117;">!</div>
+            <div><strong>API rate limits</strong> — free-tier yfinance, Finnhub, and OpenRouter all throttle under load; semaphore + backoff required</div>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="margin-bottom: 16px;">Future additions</h3>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="card card-sm">
+            <p style="font-size: 0.9rem; color: #94a3b8;">📱 <strong style="color:#6ee7b7;">Mobile / PWA</strong> — push alerts when a stock crosses your threshold</p>
+          </div>
+          <div class="card card-sm">
+            <p style="font-size: 0.9rem; color: #94a3b8;">📊 <strong style="color:#6ee7b7;">Benchmark comparison</strong> — compare portfolio performance vs S&amp;P 500 / sector ETFs</p>
+          </div>
+          <div class="card card-sm">
+            <p style="font-size: 0.9rem; color: #94a3b8;">🔔 <strong style="color:#6ee7b7;">Email / SMS alerts</strong> — notify on score changes, not just dashboard refresh</p>
+          </div>
+          <div class="card card-sm">
+            <p style="font-size: 0.9rem; color: #94a3b8;">🤖 <strong style="color:#6ee7b7;">Multi-model routing</strong> — route by task type (reasoning vs summarisation vs tool use)</p>
+          </div>
+          <div class="card card-sm">
+            <p style="font-size: 0.9rem; color: #94a3b8;">📈 <strong style="color:#6ee7b7;">Historical backtesting</strong> — validate AI recommendations against past price action</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Close -->
+  <div class="slide slide-close" id="slide-9">
     <div class="eyebrow">Thank you</div>
     <h1>Stock Portfolio<br><span class="accent">Advisor</span></h1>
     <div class="divider"></div>
@@ -482,12 +533,12 @@ mistral-7b → llama-3.1-8b → gemma-3-4b<br>
 
 <div class="nav">
   <button onclick="prev()">← Prev</button>
-  <span class="slide-counter" id="counter">1 / 8</span>
+  <span class="slide-counter" id="counter">1 / 9</span>
   <button onclick="next()">Next →</button>
 </div>
 
 <script>
-  const total = 8;
+  const total = 9;
   let current = 1;
 
   function show(n) {
