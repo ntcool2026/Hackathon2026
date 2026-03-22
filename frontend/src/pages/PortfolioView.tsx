@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import type { FormEvent } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
@@ -45,10 +46,6 @@ async function addStock(portfolioId: string, ticker: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ticker }),
   })
-  if (res.status === 422) {
-    const data = await res.json()
-    throw new Error(data.detail ?? 'Invalid ticker')
-  }
   if (!res.ok) throw new Error('Failed to add stock')
 }
 
@@ -115,7 +112,7 @@ export default function PortfolioView() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stocks', portfolioId] }),
   })
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = (e: FormEvent) => {
     e.preventDefault()
     const t = tickerInput.trim().toUpperCase()
     if (!t) return

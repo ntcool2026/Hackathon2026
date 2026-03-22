@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import type { KeyboardEvent } from 'react'
 import { apiFetch } from '../hooks/useApi'
 
 const API = import.meta.env.VITE_API_URL ?? ''
@@ -43,7 +44,7 @@ export default function ChatPanel({ onClose }: ChatPanelProps) {
     }
   }
 
-  function handleKey(e: React.KeyboardEvent) {
+  function handleKey(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       send()

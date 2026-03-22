@@ -24,13 +24,16 @@ export function useWebSocket(
   useEffect(() => {
     if (!userId || !token) return
 
+    let destroyed = false
+
     function connect() {
+      if (destroyed) return
       const url = `${WS_BASE}/ws/${userId}?token=${encodeURIComponent(token!)}`
       const ws = new WebSocket(url)
       wsRef.current = ws
 
       ws.onopen = () => {
-        backoffRef.current = 1_000 // reset on successful connect
+        backoffRef.current = 1_000
       }
 
       ws.onmessage = (evt) => {
@@ -43,7 +46,7 @@ export function useWebSocket(
       }
 
       ws.onclose = () => {
-        scheduleReconnect()
+        if (!destroyed) scheduleReconnect()
       }
 
       ws.onerror = () => {
@@ -108,6 +111,7 @@ export function useWebSocket(
     connect()
 
     return () => {
+      destroyed = true
       if (retryRef.current) clearTimeout(retryRef.current)
       wsRef.current?.close()
     }
