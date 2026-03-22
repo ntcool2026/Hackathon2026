@@ -56,9 +56,18 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+function initUserFromStorage(): Record<string, unknown> | null {
+  const token = getToken()
+  if (token && isTokenValid(token)) {
+    return decodeJwtPayload(token)
+  }
+  return null
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<Record<string, unknown> | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<Record<string, unknown> | null>(initUserFromStorage)
+  // If we already have a valid local token, no need to show loading state
+  const [loading, setLoading] = useState(() => initUserFromStorage() === null)
 
   const refresh = async () => {
     const token = getToken()
