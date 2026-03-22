@@ -35,7 +35,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = async () => {
     try {
-      // Try to get user with whatever auth we have (cookie or stored token)
+      // Check URL fragment for token passed from backend callback
+      const hash = window.location.hash
+      if (hash.startsWith('#token=')) {
+        const fragmentToken = decodeURIComponent(hash.slice(7))
+        if (fragmentToken) {
+          storeToken(fragmentToken)
+          // Clean the fragment from the URL without triggering a reload
+          window.history.replaceState(null, '', window.location.pathname)
+        }
+      }
+
       const token = getStoredToken()
       const headers: Record<string, string> = {}
       if (token) headers['Authorization'] = `Bearer ${token}`

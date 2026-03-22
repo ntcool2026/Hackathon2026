@@ -108,16 +108,33 @@ for route in _civic_router.routes:
         auth_router.routes.append(route)
 
 
-# Custom callback: resolve code, then redirect to frontend
+# Custom callback: resolve code, then redirect to frontend with token in URL fragment
 @auth_router.get("/auth/callback")
 async def auth_callback(code: str, state: str, request: Request):
-    redirect_response = RedirectResponse(url=f"{_FRONTEND_ORIGIN}/dashboard", status_code=302)
-    storage = FastAPICookieStorage(request, redirect_response)
+    # Capture cookies into a temp response
+    temp_response = Response()
+    storage = FastAPICookieStorage(request, temp_response)
     civic = CivicAuth(storage, _config)
     try:
         await civic.resolve_oauth_access_code(code, state)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+    # Pass the id_token as a URL fragment — never sent to server, stored by frontend JS
+    id_token = await storage.get(CivicAuth.ID_TOKEN_KEY)
+    redirect_url = (
+        f"{_FRONTEND_ORIGIN}/dashboard#token={id_token}"
+        if id_token
+        else f"{_FRONTEND_ORIGIN}/dashboard"
+    )
+    redirect_response = RedirectResponse(url=redirect_url, status_code=302)
+
+    # Copy cookies onto redirect response (keeps local dev working)
+    for key, value in temp_response.headers.items():
+        if key.lower() == "set-cookie":
+            redirect_response.headers.append(key, value)
+
+    return redirect_response
     return redirect_response
 
 
