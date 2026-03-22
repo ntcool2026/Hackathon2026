@@ -30,7 +30,10 @@ async function createPortfolio(name: string): Promise<Portfolio> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   })
-  if (!res.ok) throw new Error('Failed to create portfolio')
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { detail?: string }).detail ?? 'Failed to create portfolio')
+  }
   return res.json()
 }
 
@@ -47,6 +50,7 @@ export default function Dashboard() {
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
+  const [createError, setCreateError] = useState<string | null>(null)
 
   const { data: portfolios = [], isLoading, error } = useQuery({
     queryKey: ['portfolios'],
@@ -60,8 +64,9 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['portfolios'] })
       setCreating(false)
       setNewName('')
+      setCreateError(null)
     },
-    onError: (err: Error) => alert(`Failed to create portfolio: ${err.message}`),
+    onError: (err: Error) => setCreateError(err.message),
   })
 
   const deleteMutation = useMutation({
@@ -120,12 +125,13 @@ export default function Dashboard() {
           </button>
           <button
             type="button"
-            onClick={() => { setCreating(false); setNewName('') }}
+            onClick={() => { setCreating(false); setNewName(''); setCreateError(null) }}
             style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}
           >
             ×
           </button>
         </form>
+      {createError && <p style={{ color: 'var(--color-sell)', fontSize: 13, marginBottom: 8 }}>{createError}</p>}
       )}
 
       {portfolios.length === 0 && !creating && (

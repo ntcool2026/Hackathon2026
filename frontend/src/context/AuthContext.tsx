@@ -40,7 +40,6 @@ function isTokenValid(token: string): boolean {
   const claims = decodeJwtPayload(token)
   if (!claims) return false
   const exp = claims.exp as number | undefined
-  // Only reject if exp is present AND already passed
   if (exp !== undefined && Date.now() / 1000 > exp) return false
   return true
 }
@@ -64,7 +63,6 @@ function initUserFromStorage(): Record<string, unknown> | null {
   if (token && isTokenValid(token)) {
     const claims = decodeJwtPayload(token)
     if (!claims) return null
-    // Map sub → id to match Civic's BaseUser shape
     if (!claims.id && claims.sub) claims.id = claims.sub
     return claims
   }
@@ -84,12 +82,14 @@ interface AuthContextValue extends AuthState {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<Record<string, unknown> | null>(initUserFromStorage)
-  const [loading, setLoading] = useState(() => initUserFromStorage() === null)
+  const initialUser = initUserFromStorage()
+  const [user, setUser] = useState<Record<string, unknown> | null>(initialUser)
+  // Only show loading spinner if we have no local user — avoids flicker
+  const [loading, setLoading] = useState(initialUser === null)
 
   const refresh = async () => {
     const token = getToken()
-    // If we have a valid local token, use it — no network call needed
+    // Valid local token — use it directly, no network call
     if (token && isTokenValid(token)) {
       const claims = decodeJwtPayload(token)
       if (claims) {
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
     }
-    // No valid local token — try the server
+    // No valid local token — try the server (handles cookie-based fallback)
     try {
       const res = await fetch(`${API_BASE}/auth/user`, {
         credentials: 'include',
@@ -108,12 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json()
         setUser(data)
-      } else {
-        // Only clear token on explicit 401, not network errors
-        if (res.status === 401) {
-          clearToken()
-          setUser(null)
-        }
+      } else if (res.status === 401) {
+        clearToken()
+        setUser(null)
       }
     } catch {
       // Network error — don't clear existing auth state
@@ -130,8 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Hash already handled at module load time — just refresh to confirm state
+    // If we already have a user from local storage, skip the network call entirely
+    if (initialUser) return
     refresh()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
