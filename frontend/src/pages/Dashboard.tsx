@@ -48,9 +48,10 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
 
-  const { data: portfolios = [], isLoading } = useQuery({
+  const { data: portfolios = [], isLoading, error } = useQuery({
     queryKey: ['portfolios'],
     queryFn: fetchPortfolios,
+    retry: 1,
   })
 
   const createMutation = useMutation({
@@ -60,6 +61,7 @@ export default function Dashboard() {
       setCreating(false)
       setNewName('')
     },
+    onError: (err: Error) => alert(`Failed to create portfolio: ${err.message}`),
   })
 
   const deleteMutation = useMutation({
@@ -74,6 +76,12 @@ export default function Dashboard() {
   }
 
   if (isLoading) return <p style={{ padding: 24, color: 'var(--color-text-sub)' }}>Loading…</p>
+  if (error) return (
+    <div style={{ padding: 24 }}>
+      <p style={{ color: 'var(--color-sell)', marginBottom: 8 }}>Failed to load portfolios: {(error as Error).message}</p>
+      <button className="btn-primary" onClick={() => queryClient.invalidateQueries({ queryKey: ['portfolios'] })}>Retry</button>
+    </div>
+  )
 
   return (
     <div className="page-container">
