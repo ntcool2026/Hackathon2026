@@ -35,13 +35,36 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
-/** Returns true if the token exists and is not expired. */
+/** Returns true if the token parses and is not expired. Tokens without exp are accepted. */
 function isTokenValid(token: string): boolean {
   const claims = decodeJwtPayload(token)
   if (!claims) return false
   const exp = claims.exp as number | undefined
-  if (exp && Date.now() / 1000 > exp) return false
+  // Only reject if exp is present AND already passed
+  if (exp !== undefined && Date.now() / 1000 > exp) return false
   return true
+}
+
+// ---------------------------------------------------------------------------
+// Extract token from URL hash BEFORE first render so initUserFromStorage works
+// on the OAuth callback redirect (/dashboard#token=...)
+// ---------------------------------------------------------------------------
+;(function extractTokenFromHash() {
+  if (typeof window === 'undefined') return
+  const hash = window.location.hash
+  if (hash.startsWith('#token=')) {
+    const token = hash.slice(7)
+    setToken(token)
+    window.history.replaceState(null, '', window.location.pathname)
+  }
+})()
+
+function initUserFromStorage(): Record<string, unknown> | null {
+  const token = getToken()
+  if (token && isTokenValid(token)) {
+    return decodeJwtPayload(token)
+  }
+  return null
 }
 
 interface AuthState {
@@ -56,22 +79,12 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-function initUserFromStorage(): Record<string, unknown> | null {
-  const token = getToken()
-  if (token && isTokenValid(token)) {
-    return decodeJwtPayload(token)
-  }
-  return null
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Record<string, unknown> | null>(initUserFromStorage)
-  // If we already have a valid local token, no need to show loading state
   const [loading, setLoading] = useState(() => initUserFromStorage() === null)
 
   const refresh = async () => {
     const token = getToken()
-    // Fast path: decode claims from local token without a network round-trip
     if (token && isTokenValid(token)) {
       const claims = decodeJwtPayload(token)
       if (claims) {
@@ -80,7 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
     }
-    // No valid local token — try the server (handles cookie fallback / token refresh)
     try {
       const res = await fetch(`${API_BASE}/auth/user`, {
         credentials: 'include',
@@ -108,13 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Extract token from URL fragment after OAuth callback
-    const hash = window.location.hash
-    if (hash.startsWith('#token=')) {
-      const token = hash.slice(7)
-      setToken(token)
-      window.history.replaceState(null, '', window.location.pathname)
-    }
+    // Hash already handled at module load time — just refresh to confirm state
     refresh()
   }, [])
 
