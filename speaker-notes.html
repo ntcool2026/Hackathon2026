@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speaker Notes — Stock Portfolio Advisor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13px;
+    color: #111;
+    background: #fff;
+    padding: 32px 48px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 6px;
+  }
+
+  .meta {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 32px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 12px;
+  }
+
+  .slide {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+
+  .slide-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .slide-num {
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    background: #111;
+    padding: 2px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .slide-title {
+    font-size: 15px;
+    font-weight: bold;
+  }
+
+  .slide-subtitle {
+    font-size: 11px;
+    color: #666;
+    font-style: italic;
+  }
+
+  ul {
+    margin-left: 20px;
+    margin-top: 6px;
+  }
+
+  li {
+    margin-bottom: 6px;
+    line-height: 1.6;
+  }
+
+  .cue {
+    font-size: 11px;
+    color: #888;
+    font-style: italic;
+    margin-top: 8px;
+  }
+
+  @media print {
+    body { padding: 16px 24px; }
+    .slide { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Stock Portfolio Advisor — Speaker Notes</h1>
+<div class="meta">Team Nova Core &nbsp;·&nbsp; Hackathon 2026 &nbsp;·&nbsp; Print: File → Print → Layout: Portrait</div>
+
+<!-- SLIDE 1 -->
+<div class="slide">
+  <div class="slide-header">
+    <span class="slide-num">1</span>
+    <span class="slide-title">Title — Stock Portfolio Advisor</span>
+  </div>
+  <div class="slide-subtitle">~30 seconds</div>
+  <ul>
+    <li>Welcome everyone. We're Team Nova Core and this is Stock Portfolio Advisor.</li>
+    <li>The one-line pitch: an agentic AI that thinks about your portfolio so you don't have to.</li>
+    <li>Built in a single hackathon session using Kiro, FastAPI, React, and OpenRouter LLMs.</li>
+    <li>Let me start with the problem we set out to solve.</li>
+  </ul>
+</div>
+
+<!-- SLIDE 2 -->
+<div class="slide">
+  <div class="slide-header">
+    <span class="slide-num">2</span>
+    <span class="slide-title">The Problem — Retail investors are flying blind</span>
+  </div>
+  <div class="slide-subtitle">~60 seconds</div>
+  <ul>
+    <li>There are three tools retail investors typically reach for — dashboards, robo-advisors, and human advisors.</li>
+    <li>Dashboards show you numbers but don't explain what they mean or what to do.</li>
+    <li>Robo-advisors give a recommendation but it's a black box — no reasoning shown.</li>
+    <li>Human advisors are expensive, slow, and not available at 11pm when you're anxious about your portfolio.</li>
+    <li>The gap: nobody gives you the score AND the reasoning AND lets you ask follow-up questions. That's what we built.</li>
+  </ul>
+</div>
+
+<!-- SLIDE 3 -->
+<div class="slide">
+  <div class="slide-header">
+    <span class="slide-num">3</span>
+    <span class="slide-title">The Solution — Quant scoring + AI reasoning + conversation</span>
+  </div>
+  <div class="slide-subtitle">~90 seconds</div>
+  <ul>
+    <li>Our solution has four layers working together.</li>
+    <li>First, a quant engine scores each stock using beta, P/E ratio, PEG ratio, momentum, and any custom criteria the user sets.</li>
+    <li>Second, an LLM agent fetches live market data — price, news sentiment, SEC filings — reasons about it, and critiques its own output.</li>
+    <li>Third, results are pushed to the dashboard in real time via WebSocket — you see the score and rationale appear live.</li>
+    <li>Fourth, a chat interface lets you ask "why is AAPL flagged?" and get a portfolio-aware answer.</li>
+    <li>The mock on the right shows what a typical output looks like — a risk score of 72 with a plain-English rationale.</li>
+  </ul>
+</div>
+
+<!-- SLIDE 4 -->
+<div class="slide">
+  <div class="slide-header">
+    <span class="slide-num">4</span>
+    <span class="slide-title">Technical Deep Dive — The Agentic Loop</span>
+  </div>
+  <div class="slide-subtitle">~2 minutes</div>
+  <ul>
+    <li>This is the most technically interesting part. The agent loop has five stages.</li>
+    <li>Memory: the previous score and rationale are injected into the system prompt so the LLM reasons about what changed, not just the current snapshot.</li>
+    <li>Concurrent tool fetch: yfinance, Finnhub news, and SEC EDGAR all run in parallel via asyncio.gather — no sequential waiting.</li>
+    <li>Structured output: the LLM must emit exactly three fields. A regex parser with three fallback strategies handles noisy or malformed output.</li>
+    <li>Self-reflection: the LLM critiques its own answer. If the score delta exceeds a threshold it revises. It stops early when it converges.</li>
+    <li>Guardrails: 12 regex patterns catch leaked prompt templates, think-blocks are stripped, and there's a score-derived fallback if the rationale is garbage.</li>
+    <li>On the right — an 8-model fallback chain on free-tier OpenRouter. It rotates on 429s with a 1-second backoff.</li>
+  </ul>
+</div>
+
+<!-- SLIDE 5 -->
+<div class="slide">
+  <div class="slide-header">
+    <span class="slide-num">5</span>
+    <span class="slide-title">AI-Assisted Development — Built with Kiro</span>
+  </div>
+  <div class="slide-subtitle">~90 seconds</div>
+  <ul>
+    <li>We used Kiro as our AI development partner throughout — not just for autocomplete but for the entire development loop.</li>
+    <li>We started with a one-line idea. Kiro produced a requirements doc, a design doc, and a task list. Then it executed each task with full context.</li>
+    <li>It generated FastAPI routers, React components, Alembic migrations, and property-based tests — all from the spec, not ad-hoc prompts.</li>
+    <li>It caught real bugs in the same turn: a KeyError because Civic Auth uses "id" not "sub", a duplicate function from a mid-edit cutoff, a YAML path resolution issue.</li>
+    <li>86 unit tests, zero written by hand — all generated from acceptance criteria using Hypothesis strategies.</li>
+    <li>Net result: a two-week sprint scope delivered in a single hackathon session.</li>
+  </ul>
+</div>
+
+<!-- SLIDE 6 -->
+<div class="slide">
+  <div class="slide-header">
+    <span class="slide-num">6</span>
+    <span class="slide-title">What We Shipped — Full stack, end to end</span>
+  </div>
+  <div class="slide-subtitle">~60 seconds</div>
+  <ul>
+    <li>On the backend: FastAPI with PostgreSQL, async SQLAlchemy, five Alembic migrations, APScheduler for 30-minute refreshes, Civic Auth JWT, SlowAPI rate limiting, and a WebSocket manager.</li>
+    <li>On the frontend: React 18 with TypeScript, TanStack Query, Recharts for 1w/1y/2y price charts, a slide-out chat drawer, and live WebSocket updates throughout.</li>
+    <li>On quality: 86 passing tests, property-based testing with Hypothesis, output guardrails, think-block stripping, and score-derived fallback rationale.</li>
+    <li>The four stats at the bottom tell the story — 86 tests, 8 LLM fallbacks, 5 DB migrations, 1 session to build it all.</li>
+  </ul>
+</div>
+
+<!-- SLIDE 7 -->
+<div class="slide">
+  <div class="slide-header">
+    <span class="slide-num">7</span>
+    <span class="slide-title">Honest Assessment — How good is the agent?</span>
+  </div>
+  <div class="slide-subtitle">~60 seconds</div>
+  <ul>
+    <li>We wanted to be honest about where the agent sits on the capability spectrum.</li>
+    <li>Autonomy is moderate — it runs the loop independently but still needs human-defined criteria and thresholds.</li>
+    <li>Usefulness is high — the combination of score, rationale, and chat is genuinely more useful than any single tool.</li>
+    <li>Technical depth is good — multi-step reasoning, tool use, memory, and self-critique are all real.</li>
+    <li>Creativity is high — the portfolio-level cross-ticker analysis was an emergent capability we didn't explicitly design for.</li>
+    <li>What would push it further: agent-initiated refresh on news spikes, persistent chat history, sector-aware tool selection.</li>
+  </ul>
+</div>
+
+<!-- SLIDE 8 -->
+<div class="slide">
+  <div class="slide-header">
+    <span class="slide-num">8</span>
+    <span class="slide-title">Challenges &amp; What's Next</span>
+  </div>
+  <div class="slide-subtitle">~60 seconds</div>
+  <ul>
+    <li>Deployment was our biggest challenge — cross-origin auth, cookie vs Bearer token, and hosting config took longer than building the features themselves.</li>
+    <li>Kiro was excellent at code generation but struggled with live environment debugging and hosting configuration — that's a real limitation of current AI tooling.</li>
+    <li>Free-tier LLMs are fragile — they ignore tool schemas, hallucinate output formats, and wrap responses in think-blocks. Our three-layer fallback parser was essential.</li>
+    <li>API rate limits on yfinance, Finnhub, and OpenRouter all required semaphore and backoff handling.</li>
+    <li>For the future: mobile PWA with push alerts, benchmark comparison vs S&amp;P 500, email/SMS threshold notifications, multi-model routing by task type, and historical backtesting.</li>
+  </ul>
+</div>
+
+<!-- SLIDE 9 -->
+<div class="slide">
+  <div class="slide-header">
+    <span class="slide-num">9</span>
+    <span class="slide-title">Close — Thank you</span>
+  </div>
+  <div class="slide-subtitle">~30 seconds</div>
+  <ul>
+    <li>To wrap up: Stock Portfolio Advisor is the only portfolio tool that shows you the score, explains the reasoning, and lets you argue with it.</li>
+    <li>The code is on GitHub at github.com/ntcool2026/Hackathon2026.</li>
+    <li>We're happy to do a live demo or answer any questions.</li>
+    <li>Thank you.</li>
+  </ul>
+  <div class="cue">Pause here for questions. Have the live app ready to demo if asked.</div>
+</div>
+
+</body>
+</html>
