@@ -1,14 +1,16 @@
-// LoginPage — render-time auth redirect, no useNavigate needed
-import { Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 export default function LoginPage() {
-  const { user, loading } = useAuth()
+  const { user } = useAuth()
+  const navigate = useNavigate()
 
-  if (loading) return null
-  if (user) return <Navigate to="/dashboard" replace />
+  useEffect(() => {
+    if (user) navigate('/dashboard', { replace: true })
+  }, [user, navigate])
 
   const handleLogin = () => {
     window.location.href = `${API_BASE}/auth/login`

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import type { CSSProperties } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   ResponsiveContainer,
@@ -63,7 +62,7 @@ function scoreColor(score: number): string {
   return 'var(--color-sell)'
 }
 
-function recBadgeStyle(rec: string): CSSProperties {
+function recBadgeStyle(rec: string): React.CSSProperties {
   const colors: Record<string, string> = {
     BUY:  'var(--color-buy)',
     HOLD: 'var(--color-hold)',

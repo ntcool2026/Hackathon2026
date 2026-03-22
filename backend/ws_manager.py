@@ -62,21 +62,16 @@ async def websocket_endpoint(
     websocket: WebSocket,
     user_id: str,
 ) -> None:
-    """Accept a WebSocket connection. Auth via Bearer token query param."""
-    from civic_auth.utils import parse_jwt_without_validation
+    """Accept a WebSocket connection. Auth is cookie-based (Civic Auth)."""
+    from backend.auth import civic_auth_dep  # avoid circular import at module level
 
-    token = websocket.query_params.get("token")
-    if not token:
-        await websocket.close(code=4001)
-        return
-
-    claims = parse_jwt_without_validation(token)
-    if not claims:
-        await websocket.close(code=4001)
-        return
-    # Map sub → id to match Civic's BaseUser shape
-    user_id_from_token = claims.get("id") or claims.get("sub")
-    if not user_id_from_token or user_id_from_token != user_id:
+    # Verify the user via cookie using the Civic dependency
+    try:
+        user = await civic_auth_dep(websocket)
+        if user.get("id") != user_id:
+            await websocket.close(code=4001)
+            return
+    except Exception:
         await websocket.close(code=4001)
         return
 

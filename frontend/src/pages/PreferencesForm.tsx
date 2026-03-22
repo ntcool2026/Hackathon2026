@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import type { CSSProperties } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { apiFetch } from '../hooks/useApi'
@@ -159,7 +158,7 @@ export default function PreferencesForm() {
   )
 }
 
-const labelStyle: CSSProperties = {
+const labelStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   marginBottom: 16,
@@ -168,7 +167,7 @@ const labelStyle: CSSProperties = {
   color: 'var(--color-text)',
 }
 
-const selectStyle: CSSProperties = {
+const selectStyle: React.CSSProperties = {
   marginTop: 4,
   padding: '6px 10px',
   border: '1px solid var(--color-border)',

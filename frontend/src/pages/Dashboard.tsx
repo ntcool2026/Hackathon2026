@@ -1,9 +1,7 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getToken } from '../context/AuthContext'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { apiFetch } from '../hooks/useApi'
 
@@ -30,10 +28,7 @@ async function createPortfolio(name: string): Promise<Portfolio> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   })
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error((data as { detail?: string }).detail ?? 'Failed to create portfolio')
-  }
+  if (!res.ok) throw new Error('Failed to create portfolio')
   return res.json()
 }
 
@@ -45,17 +40,15 @@ async function deletePortfolio(id: string): Promise<void> {
 export default function Dashboard() {
   const { user } = useAuth()
   const userId = (user?.id as string) ?? null
-  useWebSocket(userId, getToken())
+  useWebSocket(userId, null)
 
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
-  const [createError, setCreateError] = useState<string | null>(null)
 
-  const { data: portfolios = [], isLoading, error } = useQuery({
+  const { data: portfolios = [], isLoading } = useQuery({
     queryKey: ['portfolios'],
     queryFn: fetchPortfolios,
-    retry: 1,
   })
 
   const createMutation = useMutation({
@@ -64,9 +57,7 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['portfolios'] })
       setCreating(false)
       setNewName('')
-      setCreateError(null)
     },
-    onError: (err: Error) => setCreateError(err.message),
   })
 
   const deleteMutation = useMutation({
@@ -74,19 +65,13 @@ export default function Dashboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['portfolios'] }),
   })
 
-  const handleCreate = (e: FormEvent) => {
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
     const name = newName.trim()
     if (name) createMutation.mutate(name)
   }
 
   if (isLoading) return <p style={{ padding: 24, color: 'var(--color-text-sub)' }}>Loading…</p>
-  if (error) return (
-    <div style={{ padding: 24 }}>
-      <p style={{ color: 'var(--color-sell)', marginBottom: 8 }}>Failed to load portfolios: {(error as Error).message}</p>
-      <button className="btn-primary" onClick={() => queryClient.invalidateQueries({ queryKey: ['portfolios'] })}>Retry</button>
-    </div>
-  )
 
   return (
     <div className="page-container">
@@ -101,39 +86,36 @@ export default function Dashboard() {
 
       {/* Inline create form */}
       {creating && (
-        <>
-          <form
-            onSubmit={handleCreate}
-            className="card"
-            style={{ display: 'flex', gap: 8, padding: 12, marginBottom: 8, alignItems: 'center' }}
+        <form
+          onSubmit={handleCreate}
+          className="card"
+          style={{ display: 'flex', gap: 8, padding: 12, marginBottom: 16, alignItems: 'center' }}
+        >
+          <input
+            autoFocus
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Portfolio name…"
+            style={{
+              flex: 1,
+              padding: '7px 12px',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 14,
+              outline: 'none',
+            }}
+          />
+          <button className="btn-primary" type="submit" disabled={createMutation.isPending || !newName.trim()}>
+            {createMutation.isPending ? 'Creating…' : 'Create'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setCreating(false); setNewName('') }}
+            style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}
           >
-            <input
-              autoFocus
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Portfolio name…"
-              style={{
-                flex: 1,
-                padding: '7px 12px',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 14,
-                outline: 'none',
-              }}
-            />
-            <button className="btn-primary" type="submit" disabled={createMutation.isPending || !newName.trim()}>
-              {createMutation.isPending ? 'Creating…' : 'Create'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setCreating(false); setNewName(''); setCreateError(null) }}
-              style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}
-            >
-              ×
-            </button>
-          </form>
-          {createError && <p style={{ color: 'var(--color-sell)', fontSize: 13, marginBottom: 8 }}>{createError}</p>}
-        </>
+            ×
+          </button>
+        </form>
       )}
 
       {portfolios.length === 0 && !creating && (

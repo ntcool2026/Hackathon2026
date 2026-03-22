@@ -1,23 +1,16 @@
 /**
  * Thin fetch wrapper that handles common HTTP error codes:
- * - 401 → throws (caller/ProtectedRoute handles redirect)
+ * - 401 → redirect to /login
  * - 429 → throw with retry message
  * - 409 → throw with limit message
  * - 422 → throw with validation detail
  */
-import { authHeaders } from '../context/AuthContext'
-
 export async function apiFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
-  const res = await fetch(input, {
-    credentials: 'include',
-    ...init,
-    headers: {
-      ...authHeaders(),
-      ...(init?.headers ?? {}),
-    },
-  })
+  const res = await fetch(input, { credentials: 'include', ...init })
 
   if (res.status === 401) {
+    // Clear any stale session state and bounce to login
+    window.location.href = '/login'
     throw new Error('Unauthorized')
   }
 
