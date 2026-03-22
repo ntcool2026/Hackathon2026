@@ -48,6 +48,10 @@ async def auth_callback(code: str, state: str, request: Request):
         await civic.resolve_oauth_access_code(code, state)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    # Ensure auth cookie is cross-site compatible (Vercel frontend → Railway backend)
+    for key, value in redirect_response.headers.items():
+        if key.lower() == "set-cookie" and "samesite" not in value.lower():
+            redirect_response.headers[key] = value + "; SameSite=None; Secure"
     return redirect_response
 
 
