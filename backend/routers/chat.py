@@ -1,4 +1,5 @@
 """Chat router: conversational interface for portfolio questions."""
+
 from __future__ import annotations
 
 import logging
@@ -43,8 +44,15 @@ async def _load_portfolio_context(user_id: str) -> list[dict[str, Any]]:
     return [
         {
             "ticker": row.ticker,
-            "ai_risk_score": float(row.ai_risk_score) if row.ai_risk_score is not None else float(row.risk_score),
-            "ai_recommendation": row.ai_recommendation or (row.recommendation.value if hasattr(row.recommendation, "value") else row.recommendation),
+            "ai_risk_score": float(row.ai_risk_score)
+            if row.ai_risk_score is not None
+            else float(row.risk_score),
+            "ai_recommendation": row.ai_recommendation
+            or (
+                row.recommendation.value
+                if hasattr(row.recommendation, "value")
+                else row.recommendation
+            ),
             "rationale": row.rationale or "",
         }
         for row in rows
@@ -53,7 +61,11 @@ async def _load_portfolio_context(user_id: str) -> list[dict[str, Any]]:
 
 def _build_chat_system_prompt(portfolio: list[dict]) -> str:
     if not portfolio:
-        return "You are a helpful portfolio advisor. The user has no holdings yet."
+        return (
+            "You are a friendly, conversational portfolio advisor. "
+            "Keep responses concise (1-2 sentences for greetings). "
+            "The user has no holdings yet."
+        )
 
     holdings = "\n".join(
         f"- {h['ticker']}: score={h['ai_risk_score']:.1f}, "
@@ -61,9 +73,13 @@ def _build_chat_system_prompt(portfolio: list[dict]) -> str:
         f"rationale={h['rationale'][:200]}"
         for h in portfolio
     )
+    tickers = ", ".join(h["ticker"] for h in portfolio)
     return (
-        "You are a helpful portfolio advisor. Answer the user's questions about their portfolio.\n\n"
-        f"Current holdings:\n{holdings}"
+        "You are a friendly, conversational portfolio advisor. "
+        "Keep responses concise. For greetings like 'hello' or 'hi', respond briefly (1 sentence). "
+        "Only discuss portfolio details when the user asks about their holdings, specific stocks, or portfolio advice.\n\n"
+        f"User holds: {tickers}\n\n"
+        f"Full portfolio data (only use when asked):\n{holdings}"
     )
 
 
@@ -93,8 +109,9 @@ async def chat(
     messages = [{"role": "system", "content": system_prompt}] + history
 
     try:
-        from backend.llm_agent import _call_openrouter_with_tools
-        data = await _call_openrouter_with_tools(messages)
+        from backend.llm_agent import _call_cerebras
+
+        data = await _call_cerebras(messages)
         choice = data["choices"][0]
         answer = (choice.get("message", {}).get("content") or "").strip()
         if not answer:

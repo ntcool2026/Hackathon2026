@@ -1,4 +1,5 @@
 """Application settings loaded from environment variables via pydantic-settings."""
+
 from pathlib import Path
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,16 +15,18 @@ class Settings(BaseSettings):
     civic_client_id: str = ""
 
     # Database
-    database_url: str = "postgresql+asyncpg://user:password@localhost:5432/portfolio_advisor"
+    database_url: str = (
+        "postgresql+asyncpg://user:password@localhost:5432/portfolio_advisor"
+    )
     database_pool_size: int = 5
 
     # Refresh scheduler
     refresh_interval_minutes: int = 30
     refresh_cycle_timeout_minutes: int = 25
 
-    # LLM / OpenRouter
-    openrouter_api_key: str = ""
-    llm_model: str = "mistralai/mistral-7b-instruct:free"
+    # LLM / Cerebras AI
+    cerebras_api_key: str = ""
+    llm_model: str = "qwen-3-235b-a22b-instruct-2507"
     llm_concurrency: int = 1
     llm_temperature: float = 0.2
     llm_delta_threshold: float = 5.0

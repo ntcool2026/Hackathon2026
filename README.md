@@ -210,7 +210,7 @@ cp .env.example .env
 Fill in at minimum:
 - `CIVIC_CLIENT_ID` — from [civic.com](https://civic.com)
 - `DATABASE_URL` — e.g. `postgresql+asyncpg://user:pass@localhost:5432/portfolio_advisor`
-- `OPENROUTER_API_KEY` — from [openrouter.ai](https://openrouter.ai)
+- `CEREBRAS_API_KEY` — from [cerebras.ai](https://cerebras.ai)
 
 ### 2. Backend
 

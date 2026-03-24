@@ -88,13 +88,8 @@ What would push this further: agent-initiated refresh when news volume spikes, p
 
 ### AI Tools
 - **Kiro** — AI IDE used for the full development loop: spec writing, code generation, debugging, test generation, and git operations
-- **OpenRouter** — LLM gateway providing access to multiple free-tier models via a single API (`https://openrouter.ai/api/v1/chat/completions`)
-- **LLM models used** (fallback chain, in order):
-  - `mistralai/mistral-7b-instruct:free`
-  - `meta-llama/llama-3.1-8b-instruct:free`
-  - `google/gemma-3-4b-it:free`
-  - `qwen/qwen3-8b:free`
-  - `nvidia/nemotron-3-super-120b-a12b:free`
+- **Cerebras AI** — LLM API providing access to high-performance models (`https://api.cerebras.ai/v1/chat/completions`)
+- **LLM model used**: `qwen-3-235b-a22b-instruct-2507`
   - `stepfun/step-3.5-flash:free`
   - `microsoft/phi-4-reasoning-plus:free`
   - `deepseek/deepseek-r1-0528-qwen3-8b:free`
